@@ -1,0 +1,177 @@
+{
+  "PROBLEM": {
+    "NAME": "multi-commodity_transshipment v1.0, extensive form",
+    "REFERENCE": "https://ampl.com/BOOK/EXAMPLES/EXAMPLES2/net1.mod",
+    "AUTHOR": "Jeremy A. Bloom (jeremyblmca@gmail.com)",
+    "NOTICES": "Copyright © 2019 Jeremy A. Bloom"
+  },
+  "DATA": [
+    {
+      "NAME": "products",
+      "ROLE": "INPUT",
+      "SCHEMA": {
+        "FIELDS": ["product"],
+        "TYPES":  ["STRING"],
+        "KEY?":   ["TRUE"]
+      },
+      "ROWS":[
+        ["towels"],
+        ["wipes"],
+        ["tissues"],
+        ["bags"]
+      ]
+    },
+    {
+      "NAME": "cities",
+      "ROLE": "INPUT",
+      "SCHEMA": {
+        "FIELDS": ["city"],
+        "TYPES":  ["STRING"],
+        "KEY?":   ["TRUE"]
+      },
+      "ROWS": [
+        [         "PITT"  ],
+        [         "NE"    ],
+        [         "SE"    ],
+        [         "BOS"   ],
+        [         "EWR"   ],
+        [         "BWI"   ],
+        [         "ATL"   ],
+        [         "MCO"   ]
+     ]
+    },
+    {
+      "NAME": "supplies",
+      "ROLE": "INPUT",
+      "SCHEMA": {
+        "FIELDS": ["city",   "product", "netSupply"],
+        "TYPES":  ["STRING", "STRING",  "DOUBLE"],
+        "KEY?":   ["TRUE",   "TRUE",    "FALSE"]
+      },
+      "ROWS": [
+        [         "PITT",     "towels",  450.0 ],
+        [         "NE",       "towels",  0.0   ],
+        [         "SE",       "towels",  0.0   ],
+        [         "BOS",      "towels",  -90.0 ],
+        [         "EWR",      "towels",  -120.0],
+        [         "BWI",      "towels",  -120.0],
+        [         "ATL",      "towels",  -70.0 ],
+        [         "MCO",      "towels",  -50.0 ],
+        [         "PITT",     "wipes",   450.0 ],
+        [         "NE",       "wipes",   0.0   ],
+        [         "SE",       "wipes",   0.0   ],
+        [         "BOS",      "wipes",   -90.0 ],
+        [         "EWR",      "wipes",   -120.0],
+        [         "BWI",      "wipes",   -120.0],
+        [         "ATL",      "wipes",   -70.0 ],
+        [         "MCO",      "wipes",   -50.0 ],
+        [         "PITT",     "tissues",  450.0 ],
+        [         "NE",       "tissues",  0.0   ],
+        [         "SE",       "tissues",  0.0   ],
+        [         "BOS",      "tissues",  -90.0 ],
+        [         "EWR",      "tissues",  -120.0],
+        [         "BWI",      "tissues",  -120.0],
+        [         "ATL",      "tissues",  -70.0 ],
+        [         "MCO",      "tissues",  -50.0 ],
+        [         "PITT",     "bags",     450.0 ],
+        [         "NE",       "bags",     0.0   ],
+        [         "SE",       "bags",     0.0   ],
+        [         "BOS",      "bags",     -90.0 ],
+        [         "EWR",      "bags",     -120.0],
+        [         "BWI",      "bags",     -120.0],
+        [         "ATL",      "bags",     -70.0 ],
+        [         "MCO",      "bags",     -50.0 ]
+     ]
+    },
+    {
+      "NAME": "links",
+      "ROLE": "INPUT",
+      "SCHEMA": {
+        "FIELDS": ["origin", "destination", "cost",   "capacity"],
+        "TYPES":  ["STRING", "STRING",      "DOUBLE", "DOUBLE"],
+        "KEY?":   ["TRUE",   "TRUE",        "FALSE",  "FALSE"]
+      },
+      "ROWS": [
+        [          "PITT",   "NE",          2.5,      250.0],
+        [          "PITT",   "SE",          3.5,      250.0],
+        [          "NE",     "BOS",         1.7,      100.0],
+        [          "NE",     "EWR",         0.7,      100.0],
+        [          "NE",     "BWI",         1.3,      100.0],
+        [          "SE",     "EWR",         1.3,      100.0],
+        [          "SE",     "BWI",         0.8,      100.0],
+        [          "SE",     "ATL",         0.2,      100.0],
+        [          "SE",     "MCO",         2.1,      100.0]
+      ]
+    },
+    {
+      "NAME": "shipments",
+      "ROLE": "OUTPUT",
+      "SCHEMA": {
+        "FIELDS": ["origin", "destination", "product",      "packages"],
+        "TYPES":  ["STRING", "STRING",      "STRING",       "DOUBLE"],
+        "KEY?":   ["TRUE",   "TRUE",        "TRUE",         "FALSE"]
+      },
+      "ROWS": [
+        ["ship.origin", "ship.destination", "ship.product", "ship.value"]
+      ]
+    }
+  ],
+  "VARIABLES": [
+    {
+      "NAME": "ship",
+      "TYPE": "CONTINUOUS",
+      "INDEX": "links CROSS products",
+      "BOUNDS": "NON-NEGATIVE"
+    }
+  ],
+  "CONSTRAINTS": [
+    {
+      "NAME": "balance",
+      "TYPE": "LINEAR",
+      "INDEX": "cities CROSS products",
+      "BOUNDS": {
+        "EQUALS": "SELECT netSupply FROM supplies WHERE supplies.city==balance.city"
+   },
+   {
+      "NAME": "capacity",
+      "TYPE": "LINEAR",
+      "INDEX": "links",
+      "BOUNDS": {"LOWER": "0.0", "UPPER": "links.capacity"}
+   }
+  ],
+  "DECISION_EXPRESSIONS": [
+    {
+      "NAME": "totalCost",
+      "TYPE": "LINEAR",
+      "INDEX": "SELF",
+      "SENSE": "MINIMIZE"
+    }
+  ],
+  "COEFFICIENTS": [
+    {
+      "NAME": "balance_shipFrom",
+      "CONSTRAINTS": "balance",
+      "VARIABLES": "ship",
+      "ENTRIES": "SELECT 1.0 FROM balance WHERE balance.city==ship.origin"
+    },
+    {
+      "NAME": "balance_shipTo",
+      "CONSTRAINTS": "balance",
+      "VARIABLES": "ship",
+      "ENTRIES": "SELECT -1.0 FROM balance WHERE balance.city==ship.destination"
+    },
+    {
+      "NAME": "capacity",
+      "CONSTRAINTS": "capacity",
+      "VARIABLES": "ship",
+      "ENTRIES": "SELECT 1.0 FROM capacity WHERE capacity MATCHES ship"
+    },
+    {
+      "NAME": "total_ship",
+      "DECISION_EXPRESSIONS": "totalCost",
+      "VARIABLES": "ship",
+      "ENTRIES": "SELECT cost FROM links WHERE ship MATCHES links"
+    }
+  ]
+}
+

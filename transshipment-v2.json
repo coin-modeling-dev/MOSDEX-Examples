@@ -1,0 +1,96 @@
+{
+  "PROBLEM": {
+    "NAME": "single-commodity transshipment v2.0, modular form",
+    "REFERENCE": "https://ampl.com/BOOK/EXAMPLES/EXAMPLES2/net1.mod",
+    "AUTHOR": "Jeremy A. Bloom (jeremyblmca@gmail.com)",
+    "NOTICES": "Copyright © 2019 Jeremy A. Bloom"
+  },
+  "DATA": [
+    {
+      "NAME": "cities",
+      "ROLE": "INPUT",
+      "SCHEMA": {
+        "FIELDS": ["city"],
+        "TYPES":  ["STRING"],
+        "KEY?":   ["TRUE"]
+      }
+    },
+    {
+      "NAME": "supplies",
+      "ROLE": "INPUT",
+      "SCHEMA": {
+        "FIELDS": ["city",   "netSupply"],
+        "TYPES":  ["STRING", "DOUBLE"],
+        "KEY?":   ["TRUE",   "FALSE"]
+      },
+    },
+    {
+      "NAME": "links",
+      "ROLE": "INPUT",
+      "SCHEMA": {
+        "FIELDS": ["origin", "destination", "cost",   "capacity"],
+        "TYPES":  ["STRING", "STRING",      "DOUBLE", "DOUBLE"],
+        "KEY?":   ["TRUE",   "TRUE",        "FALSE",  "FALSE"]
+      }
+    },
+    {
+      "NAME": "shipments",
+      "ROLE": "OUTPUT",
+      "SCHEMA": {
+        "FIELDS": ["origin", "destination", "packages"],
+        "TYPES":  ["STRING", "STRING",      "DOUBLE"],
+        "KEY?":   ["TRUE",   "TRUE",        "FALSE"]
+      },
+      "ROWS": [
+        ["ship.origin", "ship.destination", "ship.value"]
+      ]
+    }
+  ],
+    "VARIABLES": [
+      {
+        "NAME": "ship",
+        "TYPE": "CONTINUOUS",
+        "INDEX": "links",
+        "BOUNDS": "NON-NEGATIVE"
+      }
+    ],
+    "CONSTRAINTS": [
+      {
+        "NAME": "balance",
+        "TYPE": "LINEAR",
+        "INDEX": "cities",
+        "BOUNDS": {
+          "EQUALS": "SELECT netSupply FROM supplies WHERE supplies.city==balance.city"
+        }
+      }
+    ],
+    "DECISION_EXPRESSIONS": [
+      {
+        "NAME": "cost",
+        "TYPE": "LINEAR",
+        "INDEX": "SELF",
+        "SENSE": "MINIMIZE"
+      }
+    ],
+    "COEFFICIENTS": [
+      {
+        "NAME": "balance_shipFrom",
+        "CONSTRAINTS": "balance",
+        "VARIABLES": "ship",
+        "ENTRIES": "SELECT 1.0 FROM balance WHERE balance.city==ship.origin"
+      },
+      {
+        "NAME": "balance_shipTo",
+        "CONSTRAINTS": "balance",
+        "VARIABLES": "ship",
+        "ENTRIES": "SELECT -1.0 FROM balance WHERE balance.city==ship.destination"
+      },
+      {
+        "NAME": "cost_ship",
+        "DECISION_EXPRESSIONS": "cost",
+        "VARIABLES": "ship",
+        "ENTRIES": "SELECT cost FROM links WHERE ship MATCHES links"
+      }
+    ]
+  }
+}
