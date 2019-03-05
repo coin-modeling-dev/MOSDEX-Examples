@@ -1,0 +1,170 @@
+{
+  "generalTransshipment::PROBLEM": {
+    "HEADER": {
+      "VERSION": "v5.0",
+      "DESCRIPTION": ["instance form, revised data format, new grammar"],
+      "REFERENCE": "https://ampl.com/BOOK/EXAMPLES/EXAMPLES2/net1.mod",
+      "AUTHOR": "Jeremy A. Bloom (jeremyblmca@gmail.com)",
+      "NOTICES": "Copyright © 2019 Jeremy A. Bloom"
+    },
+    "ship::VARIABLE": {
+      "ROLE": "OPTIMIZATION",
+      "TYPE": "CONTINUOUS",
+      "INSTANCE": {
+        "SCHEMA": {
+          "origin::KEY": "STRING",
+          "destination::KEY": "STRING",
+          "Column::FOREIGN_KEY": "STRING",
+          "Lower::VALUE": "DOUBLE",
+          "Upper::VALUE": "DOUBLE"
+        },
+        "FIELDS": ["origin",  "destination",  "Column",           "Lower", "Upper"],
+        "ROWS": [
+          [        "PITT",    "NE",           "ship_PITT_NE",     0.0,     250.0  ],
+          [        "PITT",    "SE",           "ship_PITT_SE",     0.0,     250.0  ],
+          [        "NE",      "BOS",          "ship_NE_BOS",      0.0,     100.0  ],
+          [        "NE",      "EWR",          "ship_NE_EWR",      0.0,     100.0  ],
+          [        "NE",      "BWI",          "ship_NE_BWI",      0.0,     100.0  ],
+          [        "SE",      "EWR",          "ship_SE_EWR",      0.0,     100.0  ],
+          [        "SE",      "BWI",          "ship_SE_BWI",      0.0,     100.0  ],
+          [        "SE",      "ATL",          "ship_SE_ATL",      0.0,     100.0  ],
+          [        "SE",      "MCO",          "ship_SE_MCO",      0.0,     100.0  ]
+        ]
+      }
+    },
+    "balance::CONSTRAINT": {
+      "ROLE": "OPTIMIZATION",
+      "TYPE": "LINEAR",
+      "INSTANCE": {
+        "SCHEMA": {
+          "city::KEY": "STRING",
+          "Row::FOREIGN_KEY": "STRING",
+          "Lower::VALUE": "DOUBLE",
+          "Upper::VALUE": "DOUBLE"
+        },
+        "FIELDS": ["city", "Row",          "Lower", "Upper"],
+        "ROWS": [
+          [        "PITT", "balance_PITT", 0.0,     450.0  ],
+          [        "NE",   "balance_NE",   0.0,     0.0    ],
+          [        "SE",   "balance_SE",   0.0,     0.0    ],
+          [        "BOS",  "balance_BOS",  0.0,     -90.0  ],
+          [        "EWR",  "balance_EWR",  0.0,     -120.0 ],
+          [        "BWI",  "balance_BWI",  0.0,     -120.0 ],
+          [        "ATL",  "balance_ATL",  0.0,     -70.0  ],
+          [        "MCO",  "balance_MCO",  0.0,     -50.0  ]
+        ]
+      }
+    },
+    "totalCost::DECISION_EXPRESSION": {
+      "ROLE": "OPTIMIZATION",
+      "TYPE": "LINEAR",
+      "SENSE": "MINIMIZE",
+      "INSTANCE": {
+        "SCHEMA": {
+          "Row::FOREIGN_KEY": "STRING",
+          "Column::FOREIGN_KEY": "STRING"
+        },
+        "FIELDS": ["Row",       "Column"   ],
+        "ROWS":   ["totalCost", "totalCost"]
+      }
+    },
+    "balance_shipFrom::COEFFICIENTS": {
+      "ROLE": "OPTIMIZATION",
+      "INSTANCE": {
+        "SCHEMA": {
+          "Row::KEY": "STRING",
+          "Column::KEY": "STRING",
+          "Entry::VALUE": "DOUBLE"
+        },
+        "FIELDS": [  "Row",          "Column",      "Entry"],
+        "ROWS": [
+          [          "balance_PITT", "ship_PITT_NE", 1.0   ],
+          [          "balance_PITT", "ship_PITT_SE", 1.0   ],
+          [          "balance_NE",   "ship_NE_BOS",  1.0   ],
+          [          "balance_NE",   "ship_NE_EWR",  1.0   ],
+          [          "balance_NE",   "ship_NE_BWI",  1.0   ],
+          [          "balance_SE",   "ship_SE_EWR",  1.0   ],
+          [          "balance_SE",   "ship_SE_BWI",  1.0   ],
+          [          "balance_SE",   "ship_SE_ATL",  1.0   ],
+          [          "balance_SE",   "ship_SE_MCO",  1.0   ]
+        ]
+      }
+    },
+    "balance_shipTo::COEFFICIENTS": {
+      "ROLE": "OPTIMIZATION",
+      "INSTANCE": {
+        "SCHEMA": {
+          "Row::KEY": "STRING",
+          "Column::KEY": "STRING",
+          "Entry::VALUE": "DOUBLE"
+        },
+        "FIELDS": ["Row",         "Column",        "Entry"],
+        "ROWS": [
+          [        "balance_NE",  "ship_PITT_NE",   -1.0  ],
+          [        "balance_SE",  "ship_PITT_SE",   -1.0  ],
+          [        "balance_BOS", "ship_NE_BOS",    -1.0  ],
+          [        "balance_EWR", "ship_NE_EWR",    -1.0  ],
+          [        "balance_EWR", "ship_SE_EWR",    -1.0  ],
+          [        "balance_BWI", "ship_NE_BWI",    -1.0  ],
+          [        "balance_BWI", "ship_SE_BWI",    -1.0  ],
+          [        "balance_ATL", "ship_SE_ATL",    -1.0  ],
+          [        "balance_MCO", "ship_SE_MCO",    -1.0  ]
+        ]
+      }
+    },
+    "total_ship::COEFFICIENTS": {
+      "ROLE": "OPTIMIZATION",
+      "INSTANCE": {
+        "SCHEMA": {
+          "Row::KEY": "STRING",
+          "Column::KEY": "STRING",
+          "Entry::VALUE": "DOUBLE"
+        },
+        "FIELDS": ["Row",       "Column",       "Entry"],
+        "ROWS": [
+          [        "totalCost", "ship_PITT_NE", 2.5    ],
+          [        "totalCost", "ship_PITT_SE", 3.5    ],
+          [        "totalCost", "ship_NE_BOS",  1.7    ],
+          [        "totalCost", "ship_NE_EWR",  0.7    ],
+          [        "totalCost", "ship_NE_BWI",  1.3    ],
+          [        "totalCost", "ship_SE_EWR",  1.3    ],
+          [        "totalCost", "ship_SE_BWI",  0.8    ],
+          [        "totalCost", "ship_SE_ATL",  0.2    ],
+          [        "totalCost", "ship_SE_MCO",  2.1    ]
+        ]
+      }
+    },
+    "shipments::TABLE": {
+      "ROLE": "OUTPUT",
+      "INSTANCE": {
+        "SCHEMA": {
+          "origin::KEY": "STRING",
+          "destination::KEY": "STRING",
+          "Value::VALUE": "DOUBLE"
+        },
+        "FIELDS": ["origin", "destination", "Value"                         ],
+        "ROWS": [
+          [        "PITT",   "NE",          "Solver.getValue(ship_PITT_NE)" ],
+          [        "PITT",   "SE",          "Solver.getValue(ship_PITT_SE)" ],
+          [        "NE",     "BOS",         "Solver.getValue(ship_NE_BOS)"  ],
+          [        "NE",     "EWR",         "Solver.getValue(ship_NE_EWR)"  ],
+          [        "NE",     "BWI",         "Solver.getValue(ship_NE_BWI)"  ],
+          [        "SE",     "EWR",         "Solver.getValue(ship_SE_EWR)"  ],
+          [        "SE",     "BWI",         "Solver.getValue(ship_SE_BWI)"  ],
+          [        "SE",     "ATL",         "Solver.getValue(ship_SE_ATL)"  ],
+          [        "SE",     "MCO",         "Solver.getValue(ship_SE_MCO)"  ]
+        ]
+      }
+    },
+    "objective::Table": {
+      "ROLE": "OUTPUT",
+      "INSTANCE": {
+        "SCHEMA": {
+          "Value::VALUE": "DOUBLE"
+        },
+        "ROWS": [["Solver.getObjValue()"]]
+      }
+    }
+  }
+}
+

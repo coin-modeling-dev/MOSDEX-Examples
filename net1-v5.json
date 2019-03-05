@@ -1,0 +1,134 @@
+{
+  "generalTransshipment::PROBLEM": {
+    "HEADER": {
+      "VERSION": "v5.0",
+      "DESCRIPTION": ["recipe form, revised data format, new grammar"],
+      "REFERENCE": "https://ampl.com/BOOK/EXAMPLES/EXAMPLES2/net1.mod",
+      "AUTHOR": "Jeremy A. Bloom (jeremyblmca@gmail.com)",
+      "NOTICES": "Copyright © 2019 Jeremy A. Bloom"
+    },
+    "cities::TABLE": {
+      "ROLE": "INPUT",
+      "INSTANCE": {
+        "SCHEMA": {
+          "city::KEY": "STRING",
+          "netSupply::VALUE": "DOUBLE"
+        },
+        "FIELDS": ["city", "netSupply"],
+        "ROWS": [
+          [        "PITT",  450.0     ],
+          [        "NE",    0.0       ],
+          [        "SE",    0.0       ],
+          [        "BOS",   -90.0     ],
+          [        "EWR",   -120.0    ],
+          [        "BWI",   -120.0    ],
+          [        "ATL",   -70.0     ],
+          [        "MCO",   -50.0     ]
+        ]
+      }
+    },
+    "links::TABLE": {
+      "ROLE": "INPUT",
+      "INSTANCE": {
+        "SCHEMA": {
+          "origin::KEY": "STRING",
+          "destination::KEY": "STRING",
+          "cost::VALUE": "DOUBLE",
+          "capacity::VALUE": "DOUBLE"
+        },
+        "FIELDS": ["origin",  "destination",  "cost", "capacity"],
+        "ROWS": [
+            [      "PITT",    "NE",           2.5,    250.0     ],
+            [      "PITT",    "SE",           3.5,    250.0     ],
+            [      "NE",      "BOS",          1.7,    100.0     ],
+            [      "NE",      "EWR",          0.7,    100.0     ],
+            [      "NE",      "BWI",          1.3,    100.0     ],
+            [      "SE",      "EWR",          1.3,    100.0     ],
+            [      "SE",      "BWI",          0.8,    100.0     ],
+            [      "SE",      "ATL",          0.2,    100.0     ],
+            [      "SE",      "MCO",          2.1,    100.0     ]
+          ]
+        }
+      },
+    "ship::VARIABLE": {
+      "ROLE": "OPTIMIZATION",
+      "TYPE": "CONTINUOUS",
+      "RECIPE": {
+        "INDEX": "links",
+        "KEYS": ["origin", "destination"],
+        "COLUMN": "CONCAT('ship','_',origin,'_',destination)",
+        "BOUNDS": {"LOWER": "0.0", "UPPER": "capacity"},
+        "QUERY": "SELECT origin, destination, CONCAT('ship','_', origin,'_',destination) AS Column , 0.0 AS Lower, capacity AS Upper FROM links"
+      }
+    },
+    "balance::CONSTRAINT": {
+      "ROLE": "OPTIMIZATION",
+      "TYPE": "LINEAR",
+      "RECIPE": {
+        "INDEX": "cities",
+        "KEYS": "city",
+        "ROW": "CONCAT('balance','_',city)",
+        "BOUNDS": {"EQUALS": "netSupply"},
+        "QUERY": "SELECT city, CONCAT('balance','_',city) AS Row, 0.0 AS Lower, netSupply AS Upper FROM cities"
+      }
+    },
+    "totalCost::DECISION_EXPRESSION": {
+      "ROLE": "OPTIMIZATION",
+      "TYPE": "LINEAR",
+      "SENSE": "MINIMIZE",
+      "RECIPE": {
+        "INDEX": "DUAL",
+        "QUERY": "SELECT 'totalCost' AS Row, 'totalCost' AS Column FROM DUAL"
+      }
+    },
+    "balance_shipFrom::COEFFICIENTS": {
+      "ROLE": "OPTIMIZATION",
+      "RECIPE": {
+        "INDEX": ["balance", "ship"],
+        "ROW": "balance.Row",
+        "COLUMN": "ship.Column",
+        "ENTRY": "1.0",
+        "CONDITION": "balance.city == ship.origin",
+        "QUERY": "SELECT balance.Row AS Row, ship.Column AS Column, 1.0 AS Entry FROM balance, ship WHERE balance.city == ship.origin"
+      }
+    },
+    "balance_shipTo::COEFFICIENTS": {
+      "ROLE": "OPTIMIZATION",
+      "RECIPE": {
+        "INDEX": ["balance", "ship"],
+        "ROW": "balance.Row",
+        "COLUMN": "ship.Column",
+        "ENTRY": "-1.0",
+        "CONDITION": "balance.city == ship.destination",
+        "QUERY": "SELECT balance.Row AS Row, ship.Column AS Column, -1.0 AS Entry FROM balance, ship WHERE balance.city == ship.destination"
+      }
+    },
+    "total_ship::COEFFICIENTS": {
+      "ROLE": "OPTIMIZATION",
+      "RECIPE": {
+        "INDEX": ["totalCost", "ship", "links"],
+        "ROW": "totalCost",
+        "COLUMN": "ship",
+        "ENTRY": "links.cost",
+        "CONDITION": "links.origin == ship.origin AND links.destination == ship.destination",
+        "QUERY": "SELECT totalCost.Row AS Row, ship.Column AS Column, links.cost AS Entry FROM totalCost, ship, links WHERE links.origin == ship.origin AND links.destination == ship.destination"
+      }
+    },
+    "shipments::TABLE": {
+      "ROLE": "OUTPUT",
+      "RECIPE": {
+        "INDEX": "ship",
+        "KEYS": "origin, destination",
+        "QUERY": "SELECT origin, destination, Solver.getValue(ship.Column) AS Value FROM ship"
+      }
+    },
+    "objective::Table": {
+      "ROLE": "OUTPUT",
+      "RECIPE": {
+        "INDEX": "DUAL",
+        "QUERY": "SELECT Solver.getObjValue() FROM DUAL"
+      }
+    }
+  }
+}
+
