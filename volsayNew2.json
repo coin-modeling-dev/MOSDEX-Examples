@@ -1,0 +1,171 @@
+//@formatter:off
+{
+  "volsay": {
+    "CLASS": "PROBLEM",
+    "HEADING": {
+      "DESCRIPTION": [
+        "Linear program in instance form",
+        "MOSDEX is probably overkill for this simple 3 constraint, 2 variable problem",
+        "but you don't need a solver for this problem either.",
+        "MOSDEX is intended for very large problems encountered in real-world applications",
+        "and in such cases, recipe form provides a very compact propblem representation."
+      ],
+      "VERSION": "New 2.0",
+      "REFERENCE": "https://www.ibm.com/support/knowledgecenter/en/SSSA5P_12.5.0/ilog.odms.ide.help/OPL_Studio/opllanguser/topics/opl_languser_shortTour_LP_prodplanning.html",
+      "AUTHOR": "Jeremy A. Bloom (jeremyblmca@gmail.com)",
+      "NOTICES": "Copyright © 2019 Jeremy A. Bloom",
+      "EXPRESSION": [
+        "maximize   40 * Gas + 50 * Chloride;",
+        "subject to {",
+          "ctMaxTotal: Gas + Chloride <= 50;",
+          "ctMaxTotal2: 3 * Gas + 4 * Chloride <= 180;",
+          "ctMaxChloride: Chloride <= 40;",
+        "}"
+      ]
+    },
+    "gas": {
+      "CLASS": "VARIABLE",
+      "ROLE": "OPTIMIZATION",
+      "SINGLETON": {
+        "Name": "gas",
+        "Column": "gas",
+        "Type": "CONTINUOUS",
+        "LowerBound": 0.0,
+        "UpperBound": "infinity",
+        "Value": null
+      }
+    },
+    "chloride": {
+      "CLASS": "VARIABLE",
+      "ROLE": "OPTIMIZATION",
+      "SINGLETON": {
+        "Name": "chloride",
+        "Column": "chloride",
+        "Type": "CONTINUOUS",
+        "LowerBound": 0.0,
+        "UpperBound": "infinity",
+        "Value": null
+      }
+    },
+    "ctMaxTotal": {
+      "CLASS": "CONSTRAINT",
+      "ROLE": "OPTIMIZATION",
+      "SINGLETON": {
+        "Name": "ctMaxTotal",
+        "Row": "ctMaxTotal",
+        "Type": "LINEAR",
+        "Sense": "<=",
+        "RHS": 50.0,
+        "dual": null
+      }
+    },
+    "ctMaxTotal2": {
+      "CLASS": "CONSTRAINT",
+      "ROLE": "OPTIMIZATION",
+      "SINGLETON": {
+        "Name": "ctMaxTotal2",
+        "Row": "ctMaxTotal2",
+        "Type": "LINEAR",
+        "Sense": "<=",
+        "RHS": 180.0,
+        "dual": null
+      }
+    },
+    "ctChloride": {
+      "CLASS": "CONSTRAINT",
+      "ROLE": "OPTIMIZATION",
+      "SINGLETON": {
+        "Name": "ctChloride",
+        "Row": "ctChloride",
+        "Type": "LINEAR",
+        "Sense": "<=",
+        "RHS": 40.0,
+        "dual": null
+      }
+    },
+    "profit": {
+      "CLASS": "OBJECTIVE",
+      "ROLE": "OPTIMIZATION",
+      "SINGLETON": {
+        "Name": "profit",
+        "Row": "profit",
+        "Type": "LINEAR",
+        "Constant": 0.0,
+        "Sense": "MAXIMIZE",
+        "Value": null
+     }
+    },
+    "profit_gas": {
+      "CLASS": "COEFFICIENT",
+      "ROLE": "OPTIMIZATION",
+      "SINGLETON": {
+        "Row": "total",
+        "Column": "gas",
+        "Entry": 40.0
+      }
+    },
+    "profit_chloride": {
+      "CLASS": "COEFFICIENT",
+      "ROLE": "OPTIMIZATION",
+      "SINGLETON": {
+        "Row": "total",
+        "Column": "chloride",
+        "Entry": 50.0
+      }
+    },
+    "ctMaxTotal_gas": {
+      "CLASS": "COEFFICIENT",
+      "ROLE": "OPTIMIZATION",
+      "SINGLETON": {
+        "Row": "ctMaxTotal",
+        "Column": "gas",
+        "Entry": 1.0
+      }
+    },
+    "ctMaxTotal_chloride": {
+      "CLASS": "COEFFICIENT",
+      "ROLE": "OPTIMIZATION",
+      "SINGLETON": {
+        "Row": "ctMaxTotal",
+        "Column": "chloride",
+        "Entry": 1.0
+      }
+    },
+    "ctMaxTotal2_gas": {
+      "CLASS": "COEFFICIENT",
+      "ROLE": "OPTIMIZATION",
+      "SINGLETON": {
+        "Row": "ctMaxTotal2",
+        "Column": "gas",
+        "Entry": 3.0
+      }
+    },
+    "ctMaxTotal2_chloride": {
+      "CLASS": "COEFFICIENT",
+      "ROLE": "OPTIMIZATION",
+      "SINGLETON": {
+        "Row": "ctMaxTotal2",
+        "Column": "chloride",
+        "Entry": 4.0
+      }
+    },
+    "ctMaxChloride_chloride": {
+      "CLASS": "COEFFICIENT",
+      "ROLE": "OPTIMIZATION",
+      "SINGLETON": {
+        "Row": "ctMaxChloride",
+        "Column": "chloride",
+        "Entry": 1.0
+      }
+    },
+    "solution": {
+      "CLASS": "DATA",
+      "ROLE": "OUTPUT",
+      "SINGLETON": {
+        "gas": "Solver.getValue('gas')",
+        "chloride": "Solver.getValue('chloride')",
+        "profit": "Solver.getObjValue()"
+      }
+    }
+  }
+}

@@ -1,0 +1,505 @@
+{
+  "warehouseModel"      : {
+    "CLASS"     : "PROBLEM",
+    "HEADING"    : {
+      "DESCRIPTION": ["Warehouse location problem"],
+      "VERSION"    : "New 1.0",
+      "REFERENCE"  : "https://github.com/JeremyBloom/Optimization---Sample-Notebooks/blob/master/Optimization%2BModeling%2Band%2BRelational%2BData%2Bpub.ipynb",
+      "AUTHOR"     : "Jeremy A. Bloom (jeremyblmca@gmail.com)",
+      "NOTICES"    : "Copyright © 2019 Jeremy A. Bloom",
+      "EXPRESSION": [
+        "dexpr float capitalCost= sum(w in warehouses) (w.fixedCost*open[w] + w.capacityCost*capacity[w]);",
+        "dexpr float operatingCost= sum(r in routes) r.shippingCost*demand[r]*ship[r];",
+        "",
+        "minimize totalCost == capitalCost + operatingCost;	// $/yr",
+        "subject to {",
+ 	    "",
+ 	      "forall(w in warehouses)",
+            "//Cannot ship more out of a warehouse than its capacity",
+            "ctCapacity[w]: capacity[w] >= sum(r in routes: r.location==w.location) demand[r]*ship[r];",
+          "" ,
+	      "forall(s in stores)",
+            "//Must ship at least 100% of each store's demand",
+	        "ctDemand[s]: sum(r in routes: r.store==s.store) ship[r] >= 1.0;",
+          "",
+	      "forall(r in routes, w in warehouses: w.location==r.location)",
+            "//Can only ship along a supply route if its warehouse is open",
+            "ctSupply[r]: ship[r] - open[w]<= 0.0",
+          "",
+        "}"
+      ]
+    },
+    "warehouses": {
+      "CLASS"     : "DATA",
+      "ROLE": "INPUT",
+      "SCHEMA"    : {
+        "location"    : "STRING",
+        "fixedCost"   : "DOUBLE",
+        "capacityCost": "DOUBLE"
+      },
+      "IMPORT_FROM":["warehouseData.warehouses"]
+    },
+    "routes"    : {
+      "CLASS"     : "DATA",
+      "ROLE": "INPUT",
+      "SCHEMA"    : {
+        "location"    : "STRING",
+        "store"       : "STRING",
+        "shippingCost": "DOUBLE"
+      },
+      "IMPORT_FROM": ["warehouseData.routes"]
+    },
+    "stores"    : {
+      "CLASS"     : "DATA",
+      "ROLE": "INPUT",
+      "SCHEMA"    : {
+        "store": "STRING"
+      },
+      "IMPORT_FROM": ["warehouseData.stores"]
+    },
+    "demands"   : {
+      "CLASS"     : "DATA",
+      "ROLE": "INPUT",
+      "SCHEMA"    : {
+        "store" : "STRING",
+        "amount": "DOUBLE"
+      },
+      "IMPORT_FROM": ["warehouseData.demands"]
+    },
+    "open": {
+      "CLASS": "VARIABLE",
+      "ROLE": "OPTIMIZATION",
+      "RECIPE": {
+        "SELECT": [
+          "'open' AS Name",
+          "'BINARY' AS Type",
+          "location",
+          "CONCAT('open','_', location) AS Column",
+          "0 AS LowerBound",
+          "1 AS UpperBound",
+          "null AS Value"
+        ],
+        "FROM": ["warehouses"]
+      }
+    },
+    "capacity": {
+      "CLASS": "VARIABLE",
+      "ROLE": "OPTIMIZATION",
+      "RECIPE": {
+        "SELECT": [
+          "'capacity' AS Name",
+          "'CONTINUOUS' AS Type",
+          "location",
+          "CONCAT('capacity','_', location) AS Column",
+          "0.0 AS LowerBound",
+          "'infinity' AS UpperBound",
+          "null AS Value"
+        ],
+        "FROM": ["warehouses"]
+      }
+    },
+    "ship": {
+      "CLASS": "VARIABLE",
+      "ROLE": "OPTIMIZATION",
+      "RECIPE": {
+        "SELECT": [
+          "'ship' AS Name",
+          "'CONTINUOUS' AS Type",
+          "location",
+          "store",
+          "CONCAT('ship','_', location,'_', store) AS Column",
+          "0.0 AS LowerBound",
+          "1.0 AS UpperBound",
+          "null AS Value"
+        ],
+        "FROM": ["routes"]
+      }
+    },
+    "capitalCost": {
+      "CLASS": "VARIABLE",
+      "ROLE": "OPTIMIZATION",
+      "SINGLETON": {
+        "Name": "capitalCost",
+        "Type": "CONTINUOUS",
+        "Column": "capitalCost",
+        "LowerBound": 0.0,
+        "UpperBound": "infinity",
+        "Value": null
+      }
+    },
+    "operatingCost": {
+      "CLASS": "VARIABLE",
+      "ROLE": "OPTIMIZATION",
+      "SINGLETON": {
+        "Name": "operatingCost",
+        "Type": "CONTINUOUS",
+        "Column": "operatingCost",
+        "LowerBound": 0.0,
+        "UpperBound": "infinity",
+        "Value": null
+      }
+    },
+    "ctCapacity": {
+      "CLASS"  : "CONSTRAINT",
+      "ROLE": "OPTIMIZATION",
+      "RECIPE": {
+        "SELECT": [
+          "'ctCapacity' AS Name",
+          "'LINEAR' AS Type",
+          "location",
+          "CONCAT('ctCapacity','_', location) AS Row",
+          "'>=' AS Sense",
+          "0.0 AS RHS"
+        ],
+        "FROM": ["warehouses"]
+      }
+    },
+    "ctCapacity_capacity": {
+      "CLASS": "COEFFICIENT",
+      "ROLE": "OPTIMIZATION",
+      "RECIPE": {
+        "SELECT": [
+          "ctCapacity.Row AS Row",
+          "capacity.Column AS Column",
+          "1.0 AS Entry"
+        ],
+        "FROM": ["ctCapacity"],
+        "JOIN": ["JOIN capacity USING location"]
+      }
+    },
+    "ctCapacity_ship": {
+      "CLASS": "COEFFICIENT",
+      "ROLE": "OPTIMIZATION",
+      "RECIPE": {
+        "SELECT": [
+          "ctCapacity.Row AS Row",
+          "ship.Column AS Column",
+          "-demands.amount AS Entry"
+        ],
+        "FROM": ["ctCapacity"],
+        "JOIN": [
+          "JOIN ship USING location",
+          "JOIN demands USING store"]
+      }
+    },
+    "ctDemand": {
+      "CLASS"  : "CONSTRAINT",
+      "ROLE": "OPTIMIZATION",
+      "RECIPE": {
+        "SELECT": [
+          "'ctDemand' AS Name",
+          "'LINEAR' AS Type",
+          "store",
+          "CONCAT('ctDemand','_', store) AS Row",
+          "'>=' AS Sense",
+          "1.0 AS RHS"
+        ],
+        "FROM": ["stores"]
+      }
+    },
+    "ctDemand_ship": {
+      "CLASS": "COEFFICIENT",
+      "ROLE": "OPTIMIZATION",
+      "RECIPE": {
+        "SELECT": [
+          "ctDemand.Row AS Row",
+          "ship.Column AS Column",
+          "1.0 AS Entry"
+        ],
+        "FROM": ["ctDemand"],
+        "JOIN": ["JOIN ship USING store"]
+      }
+    },
+    "ctSupply": {
+      "CLASS": "CONSTRAINT",
+      "ROLE" : "OPTIMIZATION",
+      "RECIPE": {
+        "SELECT": [
+          "'ctSupply' AS Name",
+          "'LINEAR' AS Type",
+          "location",
+          "store",
+          "CONCAT('ctSupply','_', location,'_', store) AS Row",
+          "'<=' AS Sense",
+          "0.0 AS RHS"
+        ],
+        "FROM": ["routes"]
+      }
+    },
+    "ctSupply_open":{
+      "CLASS": "COEFFICIENT",
+      "PROPERTIES": {
+        "ROLE": "OPTIMIZATION"
+      },
+      "RECIPE": {
+        "SELECT": [
+          "ctSupply.Row AS Row",
+          "open.Column AS Column",
+          "-1.0 AS Entry"
+        ],
+        "FROM": ["ctSupply"],
+        "JOIN": ["JOIN open USING location"]
+      }
+    },
+    "ctSupply_ship": {
+      "CLASS": "COEFFICIENT",
+      "ROLE": "OPTIMIZATION",
+      "RECIPE": {
+        "SELECT": [
+          "ctSupply.Row AS Row",
+          "ship.Column AS Column",
+          "1.0 AS Entry"
+        ],
+        "FROM": ["ctSupply"],
+        "JOIN": ["JOIN ship USING location"]
+      }
+    },
+    "deCapitalCost": {
+      "CLASS": "CONSTRAINT",
+      "ROLE": "OPTIMIZATION",
+      "SINGLETON": {
+        "Name": "deCapitalCost",
+        "Type": "LINEAR",
+        "Row": "deCapitalCost",
+        "Sense": "==",
+        "RHS": "0.0"
+      }
+    },
+    "deCapitalCost_open": {
+      "CLASS": "COEFFICIENT",
+      "ROLE": "OPTIMIZATION",
+      "RECIPE": {
+        "SELECT": [
+          "'deCapitalCost' AS Row",
+          "open.Column AS Column",
+          "warehouses.fixedCost AS Entry"
+        ],
+        "FROM": ["warehouses"],
+        "JOIN": ["JOIN open USING location"]}
+    },
+    "deCapitalCost_capacity": {
+      "CLASS": "COEFFICIENT",
+      "ROLE": "OPTIMIZATION",
+      "RECIPE": {
+        "SELECT": [
+          "'deCapitalCost' AS Row",
+          "capacity.Column AS Column",
+          "warehouses.capacityCost AS Entry"
+        ],
+        "FROM": ["warehouses"],
+        "JOIN": ["JOIN capacity USING location"]
+      }
+    },
+    "deCapitalCost_capitalCost": {
+      "CLASS": "COEFFICIENT",
+      "ROLE": "OPTIMIZATION",
+      "SCHEMA": {
+        "Row": "STRING",
+        "Column": "STRING",
+        "Entry": "DOUBLE"
+      },
+      "INSTANCE": [["deCapitalCost", "capitalCost", -1.0]]
+  },
+    "deOperatingCost": {
+      "CLASS": "CONSTRAINT",
+      "ROLE": "OPTIMIZATION",
+      "SINGLETON": {
+        "Name": "deOperatingCost",
+        "Type": "LINEAR",
+        "Row": "deOperatingCost",
+        "Sense": "==",
+        "RHS": "0.0"
+      }
+    },
+    "deOperatingCost_ship": {
+      "CLASS": "COEFFICIENT",
+      "ROLE": "OPTIMIZATION",
+      "RECIPE": {
+        "SELECT": [
+          "'deOperatingCost' AS Row",
+          "ship.Column AS Column",
+          "routes.shippingCost AS Entry"
+        ],
+        "FROM": ["routes"],
+        "JOIN": ["JOIN ship USING (location, store)"]
+      }
+    },
+    "deOperatingCost_operatingCost": {
+      "CLASS": "COEFFICIENT",
+      "ROLE": "OPTIMIZATION",
+      "SCHEMA": {
+        "Row": "STRING",
+        "Column": "STRING",
+        "Entry": "DOUBLE"
+      },
+      "INSTANCE": [["deOperatingCost", "operatingCost", -1.0]]
+  },
+    "totalCost": {
+      "CLASS": "OBJECTIVE",
+      "ROLE": "OPTIMIZATION",
+      "SINGLETON": {
+        "Name": "totalCost",
+        "Type": "LINEAR",
+        "Row": "totalCost",
+        "Constant": "0.0",
+        "Sense": "MINIMIZE",
+        "Value": null
+      }
+    },
+    "totalCost_capitalCost": {
+      "CLASS": "COEFFICIENT",
+      "ROLE": "OPTIMIZATION",
+      "SINGLETON": {
+        "Row": "totalCost",
+        "Column": "capitalCost",
+        "Entry": 1.0
+      }
+    },
+    "totalCost_operatingCost": {
+      "CLASS": "COEFFICIENT",
+      "ROLE": "OPTIMIZATION",
+      "SINGLETON": {
+        "Row": "totalCost",
+        "Column": "operatingCost",
+        "Entry": 1.0
+      }
+    },
+    "objectives": {
+      "CLASS": "DATA",
+      "ROLE": "OUTPUT",
+      "SINGLETON"    : {
+        "problem": "Warehousing",
+        "totalCost"  : "Solver.getObjValue()",
+        "capitalCost"  : "Solver.getValue('capitalCost')",
+        "operatingCost"  : "Solver.getValue('operatingCost')"
+      }
+    },
+    "openWarehouses": {
+      "CLASS": "DATA",
+      "ROLE": "OUTPUT",
+      "SCHEMA"    : {
+        "location": "STRING",
+        "open"    : "INTEGER",
+        "capacity": "DOUBLE"
+      },
+      "RECIPE": {
+        "SELECT": [
+          "open.location AS location",
+          "Solver.getValue(open.Column) AS open",
+          "Solver.getValue(capacity.Column) AS Capacity"
+        ],
+        "FROM": ["open"],
+        "JOIN": ["JOIN capacity USING Column"]
+      }
+    },
+    "shipments": {
+      "CLASS": "DATA",
+      "ROLE": "OUTPUT",
+      "SCHEMA"    : {
+        "location": "STRING",
+        "store"   : "STRING",
+        "amount"  : "DOUBLE"
+      },
+      "RECIPE": {
+        "SELECT": [
+          "location",
+          "store",
+          "Solver.getValue(ship.Column) AS amount"
+        ],
+        "FROM": ["ship"],
+        "WHERE": ["amount > 0.0"]
+      }
+    }
+  },
+  "warehouseData": {
+    "CLASS": "PROBLEM",
+    "HEADING": {
+      "DESCRIPTION": ["Data for warehouse location problem"]
+    },
+    "warehouses": {
+      "CLASS": "DATA",
+      "ROLE": "INPUT",
+      "SCHEMA": {
+        "location"    : "STRING",
+        "fixedCost"   : "DOUBLE",
+        "capacityCost": "DOUBLE"
+      },
+      "FIELDS"    : [
+          "location",     "fixedCost", "capacityCost"],
+      "INSTANCE"      : [
+        [ "Brockton, MA", 550000.0,    148.0],
+        [ "Bristol, CT",  600000.0,    148.0]
+      ]
+    },
+    "routes": {
+      "CLASS": "DATA",
+      "ROLE": "INPUT",
+      "SCHEMA": {
+        "location"    : "STRING",
+        "store"       : "STRING",
+        "shippingCost": "DOUBLE"
+      },
+      "FIELDS": [
+            "location",     "store",           "shippingCost"],
+      "INSTANCE": [
+         [  "Brockton, MA",	"Malden, MA",	    42.94     ],
+         [  "Brockton, MA",	"Medford, MA",	    41.43     ],
+         [  "Brockton, MA",	"Quincy, MA",	    18.61     ],
+         [  "Brockton, MA",	"Brockton, MA",	    0.0       ],
+         [  "Brockton, MA",	"Bristol, CT",	    186.05    ],
+         [  "Brockton, MA",	"Manchester, CT",	144.12    ],
+         [  "Brockton, MA",	"Milford, CT",	    217.46    ],
+         [  "Brockton, MA",	"New Haven, CT",	201.55    ],
+         [  "Brockton, MA",	"Stamford, CT",	    267.37    ],
+         [  "Bristol, CT",	"Malden, MA",	    197.68    ],
+         [  "Bristol, CT",	"Medford, MA",	    191.09    ],
+         [  "Bristol, CT",	"Quincy, MA",	    191.12    ],
+         [  "Bristol, CT",	"Brockton, MA",	    186.05    ],
+         [  "Bristol, CT",	"Bristol, CT",	    0.0       ],
+         [  "Bristol, CT",	"Manchester, CT",	41.96     ],
+         [  "Bristol, CT",	"Milford, CT",	    56.67     ],
+         [  "Bristol, CT",	"New Haven, CT",	44.54     ],
+         [  "Bristol, CT",	"Stamford, CT",	    94.66     ]
+      ]
+    },
+    "stores": {
+      "CLASS": "DATA",
+      "ROLE": "INPUT",
+      "SCHEMA": {
+        "store": "STRING"
+      },
+      "INSTANCE": [
+        ["Malden, MA"],
+        ["Medford, MA"],
+        ["Quincy, MA"],
+        ["Brockton, MA"],
+        ["Bristol, CT"],
+        ["Manchester, CT"],
+        ["Milford, CT"],
+        ["New Haven, CT"],
+        ["Stamford, CT"]
+      ]
+    },
+    "demands"   : {
+      "CLASS"     : "DATA",
+      "ROLE": "INPUT",
+      "SCHEMA"    : {
+        "store" : "STRING",
+        "amount": "DOUBLE"
+      },
+      "FIELDS"    : [
+            "store",          "scenarioId",   "amount"],
+      "INSTANCE"      : [
+         [  "Malden, MA",     "0",            104.0 ],
+         [  "Medford, MA",    "0",            50.0 ],
+         [  "Quincy, MA",     "0",            25.0 ],
+         [  "Brockton, MA",   "0",            28.0 ],
+         [  "Bristol, CT",    "0",            28.0 ],
+         [  "Manchester, CT", "0",            80.0 ],
+         [  "Milford, CT",    "0",            103.0 ],
+         [  "New Haven, CT",  "0",            80.0 ],
+         [  "Stamford, CT",   "0",            73.0 ]
+      ]
+    }
+  }
+}

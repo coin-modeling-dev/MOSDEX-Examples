@@ -1,0 +1,374 @@
+{
+  "cuttingStockMaster": {
+    "CLASS": "PROBLEM",
+    "HEADING": {
+      "DESCRIPTION": [
+        "Illustrates how to set up in MOSDEX to specify a decomposition model.",
+        "Cutting stock uses column-generation.",
+        "This is the master problem."
+      ],
+      "VERSION"    : "New 1.0",
+      "REFERENCE"  : "https://github.com/IBMDecisionOptimization/DOcloud-Cutting-Stock-Java-Sample",
+      "AUTHOR"     : "Jeremy A. Bloom (jeremyblmca@gmail.com)",
+      "NOTICES"    : "Copyright © 2019 Jeremy A. Bloom",
+      "EXPRESSION": [
+        "dvar float rolls[patterns] in 0..1000000; // Number of rolls cut with each pattern",
+        "constraint ctOrder[items];",
+        "",
+        "dexpr float cost = sum( p in patterns ) p.cost * rolls[p];",
+        "",
+        "minimize cost;",
+        "",
+        "subject to {",
+        "  forall( i in items )",
+        "    ctOrder[i]: // Cut enough rolls to fill the order amount for each item",
+        "      sum( p in patterns, c in slices : p.id==c.pattern && i.id==c.item )",
+        "         c.number * rolls[p] >= i.order;",
+        "}"
+      ]
+    },
+    "items": {
+      "CLASS": "DATA",
+      "ROLE": "INPUT",
+      "IMPORT_FROM": ["cuttingStockData.items"]
+    },
+    "patterns": {
+      "CLASS": "DATA",
+      "ROLE": "INPUT",
+      "INITIALIZE_FROM": ["cuttingStockData.patterns"],
+      "RECIPE": {
+        "UNION": ["patterns", "cuttingStockSubproblem.newPattern"]
+      }
+    },
+    "slices": {
+      "CLASS": "DATA",
+      "ROLE": "INPUT",
+      "INITIALIZE_FROM": ["cuttingStockData.slices"],
+      "RECIPE": {
+        "UNION": ["slices", "cuttingStockSubproblem.newSlices"]
+      }
+    },
+    "rolls": {
+      "CLASS": "VARIABLE",
+      "ROLE": "OPTIMIZATION",
+      "RECIPE": {
+        "SELECT": [
+          "'rolls' AS Name",
+          "'CONTINUOUS' AS Type",
+          "patterns.id AS pattern",
+          "0.0 AS LowerBound",
+          "'infinity' AS UpperBound",
+          "null AS Value"
+        ],
+        "FROM": ["patterns"]
+      
+      }
+    },
+    "cost": {
+      "CLASS": "OBJECTIVE",
+      "ROLE": "OPTIMIZATION",
+      "SINGLETON": {
+        "Name": "cost",
+        "Type": "LINEAR",
+        "Row": "cost",
+        "Constant": 0.0,
+        "Sense": "MINIMIZE",
+        "Value": null
+      }
+    },
+    "cost_rolls": {
+      "CLASS": "COEFFICIENT",
+      "ROLE": "OPTIMIZATION",
+      "RECIPE": {
+        "SELECT": ["'cost' AS Row", "rolls.Column AS Column", "patterns.cost AS Entry"],
+        "FROM": ["rolls"],
+        "JOIN": ["JOIN patterns", "ON (rolls.pattern = patterns.id)"]
+      }
+    },
+    "ctOrder": {
+      "CLASS": "CONSTRAINT",
+      "ROLE": "OPTIMIZATION",
+      "RECIPE": {
+        "SELECT": [
+          "'ctOrder' AS Name",
+          "'LINEAR' AS Type",
+          "items.id AS item",
+          "CONCAT('ctOrder','_', items.id) AS Row",
+          "'>=' AS Sense",
+          "items.order AS RHS",
+          "null AS Dual"
+        ],
+        "FROM": ["items"]
+      }
+    },
+    "ctOrder_rolls": {
+      "CLASS": "COEFFICIENT",
+      "ROLE": "OPTIMIZATION",
+      "RECIPE": {
+        "SELECT": ["ctOrder.Row AS Row", "rolls.Column AS Column", "slices.number AS Entry"],
+        "FROM": ["ctOrder"],
+        "JOIN": [
+          "JOIN patterns",
+          "JOIN slices", "ON ((ctOrder.item = slices.item)", "AND", "(patterns.id = slices.pattern))",
+          "JOIN rolls", "ON (patterns.id = rolls.pattern)"
+        ]
+      }
+    },
+    "objective": {
+      "CLASS": "DATA",
+      "ROLE": "OUTPUT",
+      "SINGLETON": {
+        "value": "Solver.getObjValue()"
+      }
+    },
+    "use": {
+      "CLASS": "DATA",
+      "ROLE": "OUTPUT",
+      "RECIPE": {
+        "SELECT": ["pattern", "Value AS number"],
+        "FROM": ["rolls"]
+      }
+    },
+    "duals": {
+      "CLASS": "DATA",
+      "ROLE": "OUTPUT",
+      "RECIPE": {
+        "SELECT": ["item", "Dual AS price"],
+        "FROM": ["ctOrder"]
+      }
+    }
+  },
+  "cuttingStockSubproblem": {
+    "CLASS": "PROBLEM",
+    "HEADING": {
+      "DESCRIPTION": [
+        "Illustrates how to set up in MOSDEX to specify a decomposition model.",
+        "Cutting stock uses column-generation.",
+        "This is the subproblem."
+      ],
+      "VERSION"    : "New 1.0",
+      "REFERENCE"  : "https://github.com/IBMDecisionOptimization/DOcloud-Cutting-Stock-Java-Sample",
+      "AUTHOR"     : "Jeremy A. Bloom (jeremyblmca@gmail.com)",
+      "NOTICES"    : "Copyright © 2019 Jeremy A. Bloom",
+      "EXPRESSION": [
+        "dvar int slice[items] in 0..100000; // Number of slices of this item in the new pattern",
+        "dexpr float reducedCost =",
+        "  1 - sum(i in items, d in duals : i.id==d.item) d.price * slice[i];",
+        "",
+        "minimize reducedCost;",
+        "subject to {",
+        "  ctFill:",
+        "    sum(i in items) i.width * slice[i] <= parameter.rollWidth;",
+        "}"
+      ]
+    },
+    "parameters": {
+      "CLASS": "DATA",
+      "ROLE": "INPUT",
+      "INITIALIZE_FROM": ["cuttingStockData.parameters"],
+      "RECIPE": {
+        "SELECT": ["rollWidth", "nbPatterns+1 AS nbPatterns"],
+        "FROM": ["parameters"]
+      }
+    },
+    "items": {
+      "CLASS": "DATA",
+      "ROLE": "INPUT",
+      "IMPORT_FROM": ["cuttingStockData.items"]
+    },
+    "duals": {
+      "CLASS": "DATA",
+      "ROLE": "INPUT",
+      "INITIALIZE_FROM": ["cuttingStockMaster.duals"]
+    },
+    "slice": {
+      "CLASS": "VARIABLE",
+      "ROLE": "OPTIMIZATION",
+      "RECIPE": {
+        "SELECT": [
+          "'slice' AS Name",
+          "'INTEGER' AS Type",
+          "items.id AS item",
+          "CONCAT('slice','_', items.id) AS Column",
+          "0.0 AS LowerBound",
+          "'infinity' AS UpperBound",
+          "null AS Value"
+        ],
+        "FROM": ["items"]
+      }
+    },
+    "ctFill": {
+      "CLASS": "CONSTRAINT",
+      "ROLE": "OPTIMIZATION",
+      "RECIPE": {
+        "SELECT": [
+          "'ctFill' AS Name",
+          "'LINEAR' AS Type",
+          "'ctFill' AS Row",
+          "'LE' AS Sense",
+          "parameters.rollWidth AS RHS"
+        ],
+        "FROM": ["parameters"]
+      }
+    },
+    "ctFill_slice": {
+      "CLASS": "COEFFICIENT",
+      "ROLE": "OPTIMIZATION",
+      "RECIPE": {
+        "SELECT": ["ctFill.Row AS Row", "slice.Column AS Column", "items.width AS Entry"],
+        "FROM": ["ctFill"],
+        "JOIN": [
+          "JOIN items",
+          "JOIN slice ON (slice.item = items.id)"
+        ]
+      }
+    },
+    "reducedCost": {
+      "CLASS": "VARIABLE",
+      "ROLE": "OPTIMIZATION",
+      "SINGLETON": {
+        "Name": "reducedCost",
+        "Type": "CONTINUOUS",
+        "Column": "reducedCost",
+        "LowerBound": 0.0,
+        "UpperBound": "infinity",
+        "Value": null
+      }
+    },
+    "deReducedCost": {
+      "CLASS": "DECISION_EXPRESSION",
+      "ROLE": "OPTIMIZATION",
+      "SINGLETON": {
+        "Name": "deReducedCost",
+        "Type": "LINEAR",
+        "Row": "deReducedCost",
+        "Column": "reducedCost",
+        "Constant": 1.0
+      }
+    },
+    "deReducedCost_slice": {
+      "CLASS": "COEFFICIENT",
+      "ROLE": "OPTIMIZATION",
+      "RECIPE": {
+        "SELECT": ["'deReducedCost' AS Row", "slice.Column AS Column", "-duals.price AS Entry"],
+        "FROM": ["items"],
+        "JOIN": [
+          "JOIN slice ON (slice.item = items.id)",
+          "JOIN duals ON (duals.item = items.id)"
+        ]
+      }
+    },
+    "deReducedCost_reducedCost": {
+      "CLASS": "COEFFICIENT",
+      "ROLE": "OPTIMIZATION",
+      "SINGLETON": {
+        "Row": "deReducedCost",
+        "Column": "reducedCost",
+        "Entry": -1.0
+      }
+    },
+    "objective": {
+      "CLASS": "COEFFICIENT",
+      "ROLE": "OPTIMIZATION",
+      "SINGLETON": {
+        "Name": "objective",
+        "Type": "LINEAR",
+        "Row": "objective",
+        "Constant": 1.0,
+        "Sense": "MINIMIZE",
+        "Value": null
+      }
+    },
+    "objective_reducedCost": {
+      "CLASS": "COEFFICIENT",
+      "ROLE": "OPTIMIZATION",
+      "SINGLETON": {
+        "Row": "objective",
+        "Column": "reducedCost",
+        "Entry": 1.0
+      }
+    },
+    "newPattern": {
+      "CLASS": "DATA",
+      "ROLE": "OUTPUT",
+      "RECIPE": {
+        "SELECT": [
+          "parameters.nbPatterns AS id",
+          "objective.Value AS cost"
+        ],
+        "FROM": ["parameters", "objective"]
+      }
+    },
+    "newSlices": {
+      "CLASS": "DATA",
+      "ROLE": "OUTPUT",
+      "RECIPE": {
+        "SELECT": ["slice.item AS item", "parameters.nbPatterns AS pattern", "slice.Value AS number"],
+        "FROM": ["slice", "parameters"]
+      }
+    }
+  },
+  "cuttingStockData": {
+    "CLASS": "PROBLEM",
+    "HEADING": {
+      "DESCRIPTION": [
+        "Data for a cutting stock instance."
+      ]
+    },
+    "parameters": {
+      "CLASS": "DATA",
+      "ROLE": "INPUT",
+      "SINGLETON": {
+        "rollWidth": 110,
+        "nbPatterns": 5
+      }
+    },
+    "items": {
+      "CLASS": "DATA",
+      "ROLE": "INPUT",
+      "SCHEMA": {
+        "id": "STRING",
+        "width": "INTEGER",
+        "order": "INTEGER"
+      },
+      "INSTANCE": [
+        ["XJC001_1", 20, 48],
+      	["XJC001_2", 45, 35],
+      	["XJC001_3", 50, 24],
+      	["XJC001_4", 55, 10],
+      	["XJC001_5", 75, 8]
+      ]
+    },
+    "patterns": {
+      "CLASS": "DATA",
+      "ROLE": "INPUT",
+      "SCHEMA": {
+        "id": "INTEGER",
+        "cost": "INTEGER"
+      },
+      "INSTANCE": [
+       [0, 1],
+       [1, 1],
+       [2, 1],
+       [3, 1],
+       [4, 1]
+      ]
+    },
+    "slices": {
+      "CLASS": "DATA",
+      "ROLE": "INPUT",
+      "SCHEMA": {
+        "item": "STRING",
+        "pattern": "INTEGER",
+        "number": "INTEGER"
+      },
+      "INSTANCE": [
+        ["XJC001_1", 0, 1],
+      	["XJC001_2", 1, 1],
+      	["XJC001_3", 2, 1],
+      	["XJC001_4", 3, 1],
+      	["XJC001_5", 4, 1]
+      ]
+    }
+  }
+}

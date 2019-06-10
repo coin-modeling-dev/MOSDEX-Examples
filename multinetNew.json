@@ -1,0 +1,397 @@
+{
+  "multinet": {
+    "CLASS": "PROBLEM",
+    "HEADING": {
+      "DESCRIPTION": [
+        "multi-commodity transshipment model in modular form",
+        "new syntax"
+      ],
+      "VERSION": "New v 1.0",
+      "REFERENCE": "https://ampl.com/BOOK/EXAMPLES/EXAMPLES2/net1.mod",
+      "AUTHOR": "Jeremy A. Bloom (jeremyblmca@gmail.com)",
+      "NOTICES": "Copyright © 2019 Jeremy A. Bloom",
+      "EXPRESSION": [
+        "var Ship {(i,j) in LINKS, p in PRODUCTS} >= 0]; # packages to be shipped",
+        "var z {p in PRODUCTS};                          # shipping cost",
+        "minimize TotalCost: sum {p in PRODUCTS} z[p];",
+        "subject to",
+          "Shipping_Cost{p in PRODUCTS}: ",
+            "z[p] = sum {(i,j) in LINKS} cost[i,j] * Ship[i,j,p];",
+          "Balance {k in CITIES, p in PRODUCTS}: ",
+            "sum {(k,j) in LINKS} Ship[k,j,p] - sum {(i,k) in LINKS} Ship[i,k,p] = supply[k,p] - demand[k,p];",
+          "Capacity {(i,j) in LINKS}:",
+            "sum {p in PRODUCTS} Ship[i,j,p] <= capacity[i,j]"
+      ]
+    },
+    "PATHS": ["child"],
+    "products": {
+      "CLASS": "DATA",
+      "ROLE": "INPUT",
+      "SCHEMA": {
+        "product": "STRING"
+      },
+      "INDEX": "p",
+      "INSTANCE":[
+        ["towels"],
+        ["wipes"],
+        ["tissues"],
+        ["bags"]
+      ]
+    },
+    "cities": {
+      "CLASS": "DATA",
+      "ROLE": "INPUT",
+      "SCHEMA": {
+        "city": "STRING"
+      },
+      "INSTANCE": [
+        ["PITT"],
+        ["NE"  ],
+        ["SE"  ],
+        ["BOS" ],
+        ["EWR" ],
+        ["BWI" ],
+        ["ATL" ],
+        ["MCO" ]
+      ],
+      "EXPORT_TO": ["$child", ".cities"]
+    },
+    "supplies": {
+      "CLASS": "DATA",
+      "ROLE": "INPUT",
+      "SCHEMA": {
+        "city": "STRING",
+        "product": "STRING",
+        "supply": "DOUBLE",
+        "demand": "DOUBLE"
+      },
+      "FIELDS": [
+            "city", "product",  "supply",  "demand"],
+      "INSTANCE": [
+        [   "PITT", "towels",   450.0,     0.0    ],
+        [   "NE",   "towels",   0.0,       0.0    ],
+        [   "SE",   "towels",   0.0,       90.0   ],
+        [   "BOS",  "towels",   0.0,       120.0  ],
+        [   "EWR",  "towels",   0.0,       120.0  ],
+        [   "BWI",  "towels",   0.0,       70.0   ],
+        [   "ATL",  "towels",   0.0,       50.0   ],
+        [   "MCO",  "towels",   0.0,       0.0    ],
+        [   "PITT", "wipes",    450.0,     0.0    ],
+        [   "NE",   "wipes",    0.0,       0.0    ],
+        [   "SE",   "wipes",    0.0,       0.0    ],
+        [   "BOS",  "wipes",    0.0,       90.0   ],
+        [   "EWR",  "wipes",    0.0,       120.0  ],
+        [   "BWI",  "wipes",    0.0,       120.0  ],
+        [   "ATL",  "wipes",    0.0,       70.0   ],
+        [   "MCO",  "wipes",    0.0,       50.0   ],
+        [   "PITT", "tissues",  450.0,     0.0    ],
+        [   "NE",   "tissues",  0.0,       0.0    ],
+        [   "SE",   "tissues",  0.0,       0.0    ],
+        [   "BOS",  "tissues",  0.0,       90.0   ],
+        [   "EWR",  "tissues",  0.0,       120.0  ],
+        [   "BWI",  "tissues",  0.0,       120.0  ],
+        [   "ATL",  "tissues",  0.0,       70.0   ],
+        [   "MCO",  "tissues",  0.0,       50.0   ],
+        [   "PITT", "bags",     0.0,       0.0    ],
+        [   "NE",   "bags",     0.0,       0.0    ],
+        [   "SE",   "bags",     0.0,       90.0   ],
+        [   "BOS",  "bags",     0.0,       120.0  ],
+        [   "EWR",  "bags",     0.0,       120.0  ],
+        [   "BWI",  "bags",     0.0,       70.0   ],
+        [   "ATL",  "bags",     0.0,       50.0   ],
+        [   "MCO",  "bags",     450.0,     0.0    ]
+     ]
+    },
+    "suppliesByProduct": {
+      "CLASS": "DATA",
+      "ROLE": "INPUT",
+      "FOR_EACH": "p",
+      "RECIPE": {
+        "SELECT": ["city", "supply", "demand"],
+        "FROM": ["supplies"],
+        "WHERE": ["product == $p"]
+      },
+      "EXPORT_TO": ["$child", ".supplies"]
+    },
+    "links": {
+      "CLASS": "DATA",
+      "ROLE": "INPUT",
+      "SCHEMA": {
+        "origin": "STRING",
+        "destination": "STRING",
+        "cost": "DOUBLE",
+        "capacity": "DOUBLE"
+      },
+      "FIELDS": [
+          "origin",  "destination",  "cost", "capacity"],
+      "INSTANCE": [
+        [ "PITT",    "NE",           2.5,    250.0     ],
+        [ "PITT",    "SE",           3.5,    250.0     ],
+        [ "NE",      "BOS",          1.7,    100.0     ],
+        [ "NE",      "EWR",          0.7,    100.0     ],
+        [ "NE",      "BWI",          1.3,    100.0     ],
+        [ "SE",      "EWR",          1.3,    100.0     ],
+        [ "SE",      "BWI",          0.8,    100.0     ],
+        [ "SE",      "ATL",          0.2,    100.0     ],
+        [ "SE",      "MCO",          2.1,    100.0     ]
+      ],
+      "EXPORT_TO": ["$child", ".links"]
+    },
+    "ship": {
+      "CLASS": "VARIABLE",
+      "ROLE": "OPTIMIZATION",
+      "FOR_EACH": "p",
+      "RECIPE": {
+        "SELECT": [
+          "*",
+          "'$p'", "AS product",
+          "CONCAT(Column,'_',", "'$p'", ") AS Column"
+        ],
+        "FROM": ["&child", ".ship"],
+        "UNION": ["ship"]
+      }
+    },
+    "capacity": {
+      "CLASS": "CONSTRAINT",
+      "ROLE": "OPTIMIZATION",
+      "RECIPE": {
+        "SELECT": [
+          "'capacity' AS Name",
+          "'LINEAR' AS Type",
+          "origin",
+          "destination",
+          "CONCAT('capacity','_',origin,'_',destination) AS Row",
+          "'LE' AS Sense",
+          "capacity AS RHS"
+        ],
+        "FROM": ["links"]
+      }
+   },
+    "capacity_ship": {
+      "CLASS": "COEFFICIENT",
+      "ROLE": "OPTIMIZATION",
+      "RECIPE": {
+        "SELECT": [
+          "capacity.Row AS Row",
+          "ship.Column AS Column",
+          "1.0 AS Entry"],
+        "FROM": ["capacity"],
+        "JOIN": ["JOIN ship USING (origin, destination)"]
+      }
+    },
+    "balance": {
+      "CLASS": "CONSTRAINT",
+      "ROLE": "OPTIMIZATION",
+      "FOR_EACH": "p",
+      "RECIPE": {
+        "SELECT": [
+          "*",
+          "'$p'", "AS product",
+          "CONCAT(Row,'_',", "'$p'", ") AS Row"
+        ],
+        "FROM": ["$child", ".balance"],
+        "UNION": ["balance"]
+      }
+    },
+    "z": {
+      "CLASS": "VARIABLE",
+      "ROLE": "OPTIMIZATION",
+      "FOR_EACH": "p",
+      "RECIPE": {
+        "SELECT":[
+          "*",
+          "CONCAT(z,'_',", "'$p'", ") AS Column"
+        ],
+        "FROM": ["$child", ".z"],
+        "UNION": ["z"]
+      }
+    },
+    "totalCost": {
+      "CLASS": "OBJECTIVE",
+      "ROLE": "OPTIMIZATION",
+      "SINGLETON": {
+        "Name":"totalCost",
+        "Row": "totalCost",
+        "Type": "LINEAR",
+        "Constant": 0.0,
+        "Sense": "MINIMIZE",
+        "Value": null
+      }
+    },
+    "totalCost_z": {
+      "CLASS": "COEFFICIENT",
+      "ROLE": "OPTIMIZATION",
+      "RECIPE": {
+        "SELECT": [
+          "totalCost.Row AS Row",
+          "z.Column AS Column",
+          "1.0 AS Entry"],
+        "FROM": ["totalCost"],
+        "JOIN": ["JOIN z"]
+      }
+    },
+    "shipments": {
+      "CLASS": "DATA",
+      "PROPERTIES": {
+        "ROLE": "OUTPUT"
+      },
+      "RECIPE": {
+        "SELECT": ["origin", "destination", "product", "Value AS shipment"],
+        "FROM": ["ship"]
+      }
+    },
+    "objective": {
+      "CLASS": "DATA",
+      "PROPERTIES": {
+        "ROLE": "OUTPUT"
+      },
+      "RECIPE": {
+        "SELECT": ["Value AS TotalCost"],
+        "FROM": ["totalCost"]
+      }
+    }
+  },
+  "transshipment": {
+    "CLASS": "PROBLEM",
+    "HEADING": {
+      "DESCRIPTION": [
+        "single commodity transshipment model",
+        "new syntax"
+      ],
+      "REFERENCE": "https://ampl.com/BOOK/EXAMPLES/EXAMPLES2/net1.mod",
+      "AUTHOR": "Jeremy A. Bloom (jeremyblmca@gmail.com)",
+      "NOTICES": "Copyright © 2019 Jeremy A. Bloom",
+      "EXPRESSION": [
+        "var Ship {(i,j) in LINKS} >= 0, <= capacity[i,j]; # packages to be shipped",
+        "minimize TotalCost: sum {(i,j) in LINKS} cost[i,j] * Ship[i,j];",
+        "subject to",
+          "Balance {k in CITIES}: ",
+            "sum {(k,j) in LINKS} Ship[k,j] - sum {(i,k) in LINKS} Ship[i,k] = supply[k] - demand[k];"
+      ]
+    },
+    "PATHS": ["parent"],
+    "cities": {
+      "CLASS": "DATA",
+      "ROLE": "INPUT",
+      "SCHEMA": {
+        "city": "STRING"
+      },
+      "IMPORT_FROM": ["$parent", ".cities"]
+    },
+    "supplies": {
+      "CLASS": "DATA",
+      "ROLE": "INPUT",
+      "SCHEMA": {
+        "city": "STRING",
+        "supply": "DOUBLE",
+        "demand": "DOUBLE"
+      },
+      "IMPORT_FROM": ["$parent", ".suppliesByProduct"]
+    },
+    "links": {
+      "CLASS": "DATA",
+      "ROLE": "INPUT",
+      "SCHEMA": {
+        "origin": "STRING",
+        "destination": "STRING",
+        "cost": "DOUBLE",
+        "capacity": "DOUBLE"
+      },
+      "IMPORT_FROM": ["$parent", ".links"]
+    },
+    "ship": {
+      "CLASS": "VARIABLE",
+      "ROLE": "OPTIMIZATION",
+      "RECIPE": {
+        "SELECT": [
+          "'ship' AS Name",
+          "'CONTINUOUS' AS Type",
+          "links.origin AS origin",
+          "links.destination AS destination",
+          "CONCAT('ship','_', origin, '_', destination) AS Column",
+          "0.0 AS LowerBound",
+          "'infinity' AS UpperBound",
+          "null AS Value"
+        ],
+        "FROM": ["links"]
+      }
+    },
+    "balance": {
+      "CLASS": "CONSTRAINT",
+      "ROLE": "OPTIMIZATION",
+      "RECIPE": {
+        "SELECT": [
+          "'balance' AS Name",
+          "'LINEAR' AS Type",
+          "cities.city AS city",
+          "CONCAT('balance','_', city,'_') AS Row",
+          "'EQ' AS Sense",
+          "(cities.supply-cities.demand) AS RHS"],
+        "FROM": ["cities"]
+      }
+    },
+    "balance_shipFrom": {
+      "CLASS": "COEFFICIENT",
+      "ROLE": "OPTIMIZATION",
+      "RECIPE": {
+        "SELECT": [
+          "balance.Row AS Row",
+          "ship.Column AS Column",
+          "1.0 AS Entry"
+        ],
+        "FROM": ["balance"],
+        "JOIN": ["JOIN ship", "ON (balance.city == ship.origin)"]
+      }
+    },
+    "balance_shipTo": {
+      "CLASS": "COEFFICIENT",
+      "ROLE": "OPTIMIZATION",
+      "RECIPE": {
+        "SELECT": [
+          "balance.Row AS Row",
+          "ship.Column AS Column",
+          "-1.0 AS Entry"
+        ],
+        "FROM": ["balance", "ship"],
+        "JOIN": ["JOIN ship", "ON (balance.city == ship.destination)"]
+      }
+    },
+    "z": {
+      "CLASS": "VARIABLE",
+      "ROLE": "OPTIMIZATION",
+      "SINGLETON": {
+        "Name": "z",
+        "Type": "CONTINUOUS",
+        "Column": "z",
+        "LowerBound": "0.0",
+        "UpperBound": "infinity",
+        "Value": "null"
+      }
+    },
+    "Shipping_Cost": {
+      "CLASS": "CONSTRAINT",
+      "ROLE": "OPTIMIZATION",
+      "SINGLETON": {
+        "Name": "Shipping_Cost",
+        "Type": "LINEAR",
+        "Row": "Shipping_Cost",
+        "Sense": "=="
+      }
+    },
+    "Shipping_Cost_ship": {
+      "CLASS": "COEFFICIENT",
+      "ROLE": "OPTIMIZATION",
+      "RECIPE": {
+        "SELECT": [
+          "Shipping_Cost.Row",
+          "ship.Column AS Column",
+          "links.cost AS Entry"],
+        "FROM": ["Shipping_Cost"],
+        "JOIN": [
+          "JOIN ship",
+          "JOIN links", "USING (origin, destination)"
+        ]
+      }
+    }
+  }
+}
