@@ -1,22 +1,25 @@
 {
-  "trafficNetworkQP": {
+  "trafficNetworkNLP": {
     "CLASS": "PROBLEM",
     "HEADING": {
-      "DESCRIPTION": ["Quadratically constrained network problem"],
+      "DESCRIPTION": [
+        "Quadratically constrained network problem",
+        "Formulated as a nonlinear program"
+      ],
       "REFERENCE": "https://ampl.com/MEETINGS/TALKS/2015_11_Philadelphia_MC19.pdf",
-      "VERSION": "1.1",
+      "VERSION": "1.1 (no version 1.0 of NLP)",
       "AUTHOR": "Jeremy A. Bloom (jeremyblmca@gmail.com)",
       "NOTICES": ["Copyright © 2019 Jeremy A. Bloom"],
       "MATH": [
         "var Flow {(i,j) in ROADS} >= 0, <= .9999 * cap[i,j];",
         "var Delay{ROADS} >= 0;",
-        "minimize Avg_Time: sum {(i,j) in ROADS} (base[i,j]*Flow[i,j] + Delay[i,j]) / throughput;",
+        "minimize Avg_Time: sum {(i,j) in ROADS} (base[i,j]*Flow[i,j] + Delay[i,j]) / through;",
         "subject to Delay_Def {(i,j) in ROADS}:",
-        "   sensitivity[i,j] * Flow[i,j]^2 +Flow[i,j]/capacity[i,j] * Delay[i,j] -Delay[i,j] <= 0.0;",
+        "   sens[i,j] * Flow[i,j]^2 + (Flow[i,j]/cap[i,j] - 1) * Delay[i,j] <= 0.0;",
         "subject to Balance_Node {i in INTERS}:",
-        "   sum{(i,j) in ROADS} Flow[i,j] -sum{(j,i) in ROADS} Flow[j,i] = 0.0;",
+        "   sum{(i,j) in ROADS} Flow[i,j] = sum{(j,i) in ROADS} Flow[j,i];",
         "subject to Balance_Enter:",
-        "   sum{(parameters.entrance,j) in ROADS} Flow[parameters.entrance,j] = throughput"
+        "   sum{(EN,j) in ROADS} Flow[EN,j] = through;"
       ]
     },
     "roads": {
@@ -124,7 +127,7 @@
     },
     "delayDef": {
       "CLASS": "CONSTRAINT",
-      "TYPE": "QUADRATIC",
+      "TYPE": "NONLINEAR",
       "ROLE": "OPTIMIZATION",
       "RECIPE": {
         "SELECT": [
@@ -132,64 +135,147 @@
           "origin",
           "destination",
           "CONCAT('delayDef','_', origin,'_', destination) AS Row",
-          "'QUADRATIC' AS Type",
+          "'NONLINEAR' AS Type",
           "'LE' AS Sense",
           "0.0 AS RHS"],
         "FROM": ["roads"]
       }
     },
-    "delayDef_flowSq": {
-      "CLASS": "TERM",
-      "TYPE": "QUADRATIC",
-      "ROLE": "OPTIMIZATION",
-      "RECIPE": {
-        "SELECT": [
-          "'QUADRATIC' AS Type",
-          "delayDef.Row AS Row",
-          "flow.Column AS Column1",
-          "flow.Column AS Column2",
-          "roads.sensitivity AS Coefficient"
-        ],
-        "FROM": ["delayDef"],
-        "JOIN": [
-          "JOIN roads", "USING (origin, destination)",
-          "JOIN flow",  "USING (origin, destination)"
-        ]
-      }
+    "delayDefExpression": {
+      "CLASS": "EXPRESSION",
+      "NODES": [
+        {
+          "ID": 0,
+          "OPERATION": "PARAMETER",
+          "TYPE": "UNARY",
+          "RECIPE": {
+            "SELECT": ["PARAMETER AS Operation", "origin", "destination", "sensitivity AS Operand", "sensitivity AS Result"],
+            "FROM": ["roads"]
+          }
+        },
+        {
+          "ID": 1,
+          "OPERATION": "INDEPENDENT_VARIABLE",
+          "TYPE": "UNARY",
+          "RECIPE": {
+            "SELECT": ["INDEPENDENT_VARIABLE AS Operation", "origin", "destination", "Column AS Operand", "Solver.getCurrentValue(Operand) AS Result"],
+            "FROM": ["flow"]
+          }
+        },
+        {
+          "ID": 2,
+          "OPERATION": "SQUARE",
+          "TYPE": "UNARY",
+          "RECIPE": {
+            "SELECT": ["SQUARE AS Operation", "origin", "destination", "Result AS Operand",
+              "Operand^2 AS Result"],
+            "FROM": ["NODES[1]"]
+          }
+        },
+        {
+          "ID": 3,
+          "OPERATION": "MULTIPLY",
+          "TYPE": "BINARY",
+          "RECIPE": {
+            "SELECT": ["MULTIPLY AS Operation", "origin", "destination", "NODES[0].Result AS Operand_1",
+              "NODES[2].Result AS Operand_2", "Operand_1 * Operand_2 AS Result"],
+            "FROM": ["NODES[2]"],
+            "JOIN": ["JOIN NODES[0]", "USING (origin, destination)"]
+          }
+        },
+        {
+          "ID": 4,
+          "OPERATION": "PARAMETER",
+          "TYPE": "UNARY",
+          "RECIPE": {
+            "SELECT": ["PARAMETER AS Operation", "origin", "destination", "capacity AS Operand", "capacity AS Result"],
+            "FROM": ["roads"]
+          }
+        },
+        {
+          "ID": 5,
+          "OPERATION": "DIVIDE",
+          "TYPE": "BINARY",
+          "RECIPE": {
+            "SELECT": ["DIVIDE AS Operation", "origin", "destination", "NODES[1].Result AS Operand_1",
+              "NODES[4].Result AS Operand_2", "Operand_1 / Operand_2 AS Result"],
+            "FROM": ["NODES[4]"],
+            "JOIN": ["JOIN NODES[1]", "USING (origin, destination)"]
+          }
+        },
+        {
+          "ID": 6,
+          "OPERATION": "SUBTRACT",
+          "TYPE": "BINARY",
+          "RECIPE": {
+            "SELECT": ["SUBTRACT AS Operation", "origin", "destination", "NODES[5].Result AS Operand_1",
+              "1.0 Operand_2", "Operand_1 - Operand_2 AS Result"],
+            "FROM": ["NODES[5]"]
+          }
+        },
+        {
+          "ID": 7,
+          "OPERATION": "INDEPENDENT_VARIABLE",
+          "TYPE": "UNARY",
+          "RECIPE": {
+            "SELECT": ["INDEPENDENT_VARIABLE AS Operation", "origin", "destination", "Column AS Operand", "Solver.getCurrentValue(Operand) AS Result"],
+            "FROM": ["delay"]
+          }
+        },
+        {
+          "ID": 8,
+          "OPERATION": "MULTIPLY",
+          "TYPE": "BINARY",
+          "RECIPE": {
+            "SELECT": ["MULTIPLY AS Operation", "origin", "destination", "NODES[6].Result AS Operand_1",
+              "NODES[7].Result AS Operand_2", "Operand_1 * Operand_2 AS Result"],
+            "FROM": ["NODES[6]"],
+            "JOIN": ["JOIN NODES[7]", "USING (origin, destination)"]
+          }
+        },
+        {
+          "ID": 9,
+          "OPERATION": "ADD",
+          "TYPE": "BINARY",
+          "RECIPE": {
+            "SELECT": ["ADD AS Operation", "origin", "destination", "NODES[3].Result AS Operand_1",
+              "NODES[8].Result AS  Operand_2", "Operand_1 + Operand_2 AS Result"],
+            "FROM": ["NODES[3]"],
+            "JOIN": ["JOIN NODES[8]", "USING (origin, destination)"]
+          }
+        },
+        {
+          "ID": 10,
+          "OPERATION": "DEPENDENT_VARIABLE",
+          "TYPE": "UNARY",
+          "RECIPE": {
+            "SELECT": [
+              "DEPENDENT_VARIABLE AS Operation",
+              "NODES[9].Result AS Operand",
+              "Operand AS Result",
+              "Result AS Value",
+              "'delayDefExpression' AS Name",
+              "origin",
+              "destination",
+              "CONCAT(Name,'_', origin,'_', destination) AS Column"
+            ],
+            "FROM": ["NODES[9]"]
+          }
+        }
+      ]
     },
-    "delayDef_flow_delay": {
+    "delayDef_delayDefExpression": {
       "CLASS": "TERM",
-      "TYPE": "QUADRATIC",
+      "TYPE": "NONLINEAR",
       "ROLE": "OPTIMIZATION",
       "RECIPE": {
         "SELECT": [
-          "'QUADRATIC' AS Type",
+          "'NONLINEAR' AS Type",
           "delayDef.Row AS Row",
-          "flow.Column AS Column1",
-          "delay.Column AS Column2",
-          "1.0/roads.capacity AS Coefficient"],
+          "NODES[10].Column AS Column",
+          "1.0 AS Coefficient"],
         "FROM": ["delayDef"],
-        "JOIN": [
-          "JOIN flow",  "USING (origin, destination)",
-          "JOIN delay", "USING (origin, destination)",
-          "JOIN roads", "USING (origin, destination)"
-        ]
-      }
-    },
-    "delayDef_delay": {
-      "CLASS": "TERM",
-      "TYPE": "LINEAR",
-      "ROLE": "OPTIMIZATION",
-      "RECIPE": {
-        "SELECT": [
-          "'LINEAR' AS Type",
-          "delayDef.Row AS Row",
-          "delay.Column AS Column",
-          "-1.0 AS Coefficient"],
-        "FROM": ["delayDef"],
-        "JOIN": [
-          "JOIN delay", " USING (origin, destination)"
-        ]
+        "JOIN": ["JOIN NODES[10]", "USING (origin, destination)"]
       }
     },
     "balanceNode": {
