@@ -1,0 +1,364 @@
+{
+  "SYNTAX": "MOSDEX/newExamples/MOSDEXSchemaV1-1.json",
+  "trafficNetworkNLP": {
+    "CLASS": "PROBLEM",
+    "HEADING": {
+      "DESCRIPTION": [
+        "Quadratically constrained network problem",
+        "Formulated as a nonlinear program"
+      ],
+      "REFERENCE": "https://ampl.com/MEETINGS/TALKS/2015_11_Philadelphia_MC19.pdf",
+      "VERSION": "2.0",
+      "AUTHOR": "Jeremy A. Bloom (jeremyblmca@gmail.com)",
+      "NOTICES": ["Copyright © 2019 Jeremy A. Bloom"],
+      "MATH": [
+        "var Flow {(i,j) in ROADS} >= 0, <= .9999 * cap[i,j];",
+        "var Delay{ROADS} >= 0;",
+        "minimize Avg_Time: sum {(i,j) in ROADS} (base[i,j]*Flow[i,j] + Delay[i,j]) / through;",
+        "subject to Delay_Def {(i,j) in ROADS}:",
+        "   sens[i,j] * Flow[i,j]^2 + (Flow[i,j]/cap[i,j] - 1) * Delay[i,j] <= 0.0;",
+        "subject to Balance_Node {i in INTERS}:",
+        "   sum{(i,j) in ROADS} Flow[i,j] = sum{(j,i) in ROADS} Flow[j,i];",
+        "subject to Balance_Enter:",
+        "   sum{(EN,j) in ROADS} Flow[EN,j] = through;"
+      ]
+    },
+    "roads": {
+      "CLASS": "DATA",
+      "TYPE": "INPUT",
+      "SCHEMA": {
+        "origin": "STRING",
+        "destination": "STRING",
+        "base": "DOUBLE",
+        "capacity": "DOUBLE",
+        "sensitivity": "DOUBLE"
+      },
+      "FIELDS": ["origin", "destination", "base", "capacity", "sensitivity"],
+      "INSTANCE": [
+        [        "a",      "b",           4.0,    10.0,       0.1          ],
+        [        "a",      "c",           1.0,    12.0,       0.7          ],
+        [        "c",      "b",           2.0,    20.0,       0.9          ],
+        [        "b",      "d",           1.0,    15.0,       0.5          ],
+        [        "c",      "d",           6.0,    10.0,       0.1          ]
+      ]
+    },
+    "parameters": {
+      "CLASS": "DATA",
+      "TYPE": "INPUT",
+      "SINGLETON": {
+        "entrance": "a",
+        "exit": "d",
+        "throughput": 20.0}
+    },
+    "flow": {
+      "CLASS": "VARIABLE",
+      "TYPE": "CONTINUOUS",
+      "RECIPE": {
+        "SELECT": [
+          "'flow' AS Name",
+          "'CONTINUOUS' AS Type",
+          "origin",
+          "destination",
+          "CONCAT('flow','_', origin,'_', destination) AS Column",
+          "0.0 As LowerBound",
+          "0.999* capacity AS UpperBound",
+          "Solver.getCurrentValue(Column) AS Value"
+        ],
+        "FROM": ["roads"]
+      }
+    },
+    "delay": {
+      "CLASS": "VARIABLE",
+      "TYPE": "CONTINUOUS",
+      "RECIPE": {
+        "SELECT": [
+          "'delay' AS Name",
+          "'CONTINUOUS' AS Type",
+          "origin",
+          "destination",
+          "CONCAT('delay','_', origin,'_', destination) AS Column",
+          "0.0 As LowerBound",
+          "'infinity' AS UpperBound",
+          "Solver.getCurrentValue(Column) AS Value"
+        ],
+        "FROM": ["roads"]
+      }
+    },
+    "avgTime": {
+      "CLASS": "OBJECTIVE",
+      "TYPE": "LINEAR",
+      "SINGLETON": {
+        "Name": "avgTime",
+        "Type": "LINEAR",
+        "Row": "avgTime",
+        "Constant": 0.0,
+        "Sense":"MINIMIZE",
+        "Value": "Solver.getCurrentObjectiveValue()"
+      }
+    },
+    "avgTime_flow": {
+      "CLASS": "TERM",
+      "TYPE": "LINEAR",
+      "RECIPE": {
+        "SELECT": [
+          "'LINEAR' AS Type",
+          "'avgTime' AS Row",
+          "flow.Column AS Column",
+          "roads.base/parameters.throughput AS Coefficient"],
+        "FROM": ["flow", "parameters"],
+        "JOIN": ["JOIN roads", "USING (origin, destination)"]
+      }
+    },
+    "avgTime_delay": {
+      "CLASS": "TERM",
+      "TYPE": "LINEAR",
+      "RECIPE": {
+        "SELECT": [
+          "'LINEAR' AS Type",
+          "'avgTime' AS Row",
+          "delay.Column AS Column",
+          "-1.0 AS Coefficient"],
+        "FROM": ["delay", "parameters"]
+      }
+    },
+    "delayDef": {
+      "CLASS": "CONSTRAINT",
+      "TYPE": "NONLINEAR",
+      "RECIPE": {
+        "SELECT": [
+          "'delayDef' AS Name",
+          "origin",
+          "destination",
+          "CONCAT('delayDef','_', origin,'_', destination) AS Row",
+          "'NONLINEAR' AS Type",
+          "'LE' AS Sense",
+          "0.0 AS RHS"],
+        "FROM": ["roads"]
+      }
+    },
+    "delayDefExpression": {
+      "CLASS": "EXPRESSION",
+      "TYPE": "DEPENDENT_VARIABLE",
+      "HEADING": {
+        "DESCRIPTION": [
+          "Constructions the expression tree for the non-linear delay definition."
+        ],
+        "MATH": [
+          "[Node_9] ADD                                                                                           ",
+          "          +                                                                                            ",
+          "          |                                                                                            ",
+          "          +---->[Node_3] MULTIPLY                                                                      ",
+          "          |                 +                                                                          ",
+          "          |                 |                                                                          ",
+          "          |                 +---->[Node_0] PARAMETER: sensitivity                                      ",
+          "          |                 |                                                                          ",
+          "          |                 +---->[Node_2] SQUARE                                                      ",
+          "          |                                   +                                                        ",
+          "          |                                   |                                                        ",
+          "          |                                   +---->[Node_1] INDEPEDENT_VARIABLE: flow                 ",
+          "          |                                                                                            ",
+          "          +---->[Node_8] Multiply                                                                      ",
+          "                            +                                                                          ",
+          "                            |                                                                          ",
+          "                            +---->[Node_7] INDEPEDENT_VARIABLE: delay                                  ",
+          "                            |                                                                          ",
+          "                            +---->[Node_6] SUBTRACT                                                    ",
+          "                                              +                                                        ",
+          "                                              |                                                        ",
+          "                                              +---->1                                                  ",
+          "                                              |                                                        ",
+          "                                              +---->[Node_5] DIVIDE                                    ",
+          "                                                              +                                        ",
+          "                                                              |                                        ",
+          "                                                              +---->[Node_1] INDEPEDENT_VARIABLE: flow ",
+          "                                                              |                                        ",
+          "                                                              +---->[Node_4] PARAMETER: capacity       ",
+          "                                                                                                       ",
+          "Source: http://asciiflow.com/                                                                          "
+        ]
+      },
+      "RECIPE": {
+        "SELECT": [
+          "DEPENDENT_VARIABLE AS Operation",
+          "Node_9.Result AS Operand",
+          "Operand AS Result",
+          "Result AS Value",
+          "'delayDefExpression' AS Name",
+          "origin",
+          "destination",
+          "CONCAT(Name,'_', origin,'_', destination) AS Column"
+        ],
+        "FROM": ["Node_9"]
+      }
+    },
+    "Node_0": {
+      "CLASS": "EXPRESSION",
+      "TYPE": "PARAMETER",
+      "RECIPE": {
+        "SELECT": ["'PARAMETER' AS Operation", "origin", "destination", "sensitivity AS Operand", "sensitivity AS Result"],
+        "FROM": ["roads"]
+      }
+    },
+    "Node_1": {
+      "CLASS": "EXPRESSION",
+      "TYPE": "INDEPENDENT_VARIABLE",
+      "RECIPE": {
+        "SELECT": ["INDEPENDENT_VARIABLE AS Operation", "origin", "destination", "Column AS Operand", "Solver.getCurrentValue(Operand) AS Result"],
+        "FROM": ["flow"]
+      }
+    },
+    "Node_2": {
+      "CLASS": "EXPRESSION",
+      "TYPE": "SQUARE",
+      "RECIPE": {
+        "SELECT": ["SQUARE AS Operation", "origin", "destination", "Result AS Operand",
+          "Operand^2 AS Result"],
+        "FROM": ["Node_1"]
+      }
+    },
+    "Node_3": {
+      "CLASS": "EXPRESSION",
+      "TYPE": "MULTIPLY",
+      "RECIPE": {
+        "SELECT": ["MULTIPLY AS Operation", "origin", "destination", "Node_0.Result AS Operand_1",
+          "Node_2.Result AS Operand_2", "Operand_1 * Operand_2 AS Result"],
+        "FROM": ["Node_2"],
+        "JOIN": ["JOIN Node_0", "USING (origin, destination)"]
+      }
+    },
+    "Node_4": {
+      "CLASS": "EXPRESSION",
+      "TYPE": "PARAMETER",
+      "RECIPE": {
+        "SELECT": ["PARAMETER AS Operation", "origin", "destination", "capacity AS Operand", "capacity AS Result"],
+        "FROM": ["roads"]
+      }
+    },
+    "Node_5": {
+      "CLASS": "EXPRESSION",
+      "TYPE": "DIVIDE",
+      "RECIPE": {
+        "SELECT": ["DIVIDE AS Operation", "origin", "destination", "Node_1.Result AS Operand_1",
+          "Node_4.Result AS Operand_2", "Operand_1 / Operand_2 AS Result"],
+        "FROM": ["Node_4"],
+        "JOIN": ["JOIN Node_1", "USING (origin, destination)"]
+      }
+    },
+    "Node_6": {
+      "CLASS": "EXPRESSION",
+      "TYPE": "SUBTRACT",
+      "RECIPE": {
+        "SELECT": ["SUBTRACT AS Operation", "origin", "destination", "Node_5.Result AS Operand_1",
+          "1.0 Operand_2", "Operand_1 - Operand_2 AS Result"],
+        "FROM": ["Node_5"]
+      }
+    },
+    "Node_7": {
+      "CLASS": "EXPRESSION",
+      "TYPE": "INDEPENDENT_VARIABLE",
+      "RECIPE": {
+        "SELECT": ["INDEPENDENT_VARIABLE AS Operation", "origin", "destination", "Column AS Operand", "Solver.getCurrentValue(Operand) AS Result"],
+        "FROM": ["delay"]
+      }
+    },
+    "Node_8": {
+      "CLASS": "EXPRESSION",
+      "TYPE": "MULTIPLY",
+      "RECIPE": {
+        "SELECT": ["MULTIPLY AS Operation", "origin", "destination", "Node_6.Result AS Operand_1",
+          "Node_7.Result AS Operand_2", "Operand_1 * Operand_2 AS Result"],
+        "FROM": ["Node_6"],
+        "JOIN": ["JOIN Node_7", "USING (origin, destination)"]
+      }
+    },
+    "Node_9": {
+      "CLASS": "EXPRESSION",
+      "TYPE": "ADD",
+      "RECIPE": {
+        "SELECT": ["ADD AS Operation", "origin", "destination", "Node_3.Result AS Operand_1",
+          "Node_8.Result AS  Operand_2", "Operand_1 + Operand_2 AS Result"],
+        "FROM": ["Node_3"],
+        "JOIN": ["JOIN Node_8", "USING (origin, destination)"]
+      }
+    },
+    "delayDef_delayDefExpression": {
+      "CLASS": "TERM",
+      "TYPE": "NONLINEAR",
+      "RECIPE": {
+        "SELECT": [
+          "'NONLINEAR' AS Type",
+          "delayDef.Row AS Row",
+          "delayDefExpression.Column AS Column",
+          "1.0 AS Coefficient"],
+        "FROM": ["delayDef"],
+        "JOIN": ["JOIN Node_10", "USING (origin, destination)"]
+      }
+    },
+    "balanceNode": {
+      "CLASS": "CONSTRAINT",
+      "TYPE": "LINEAR",
+      "RECIPE": {
+        "SELECT": [
+          "'balanceNode' AS Name",
+          "origin",
+          "CONCAT('balanceNode','_', origin) AS Row",
+          "'LINEAR' AS Type",
+          "'EQ' AS Sense",
+          "0.0 AS RHS"],
+        "FROM": ["roads"]
+      }
+    },
+    "balanceNode_flowOut": {
+      "CLASS": "TERM",
+      "TYPE": "LINEAR",
+      "RECIPE": {
+        "SELECT": [
+          "balanceNode.Row AS Row",
+          "flow.Column AS Column",
+          "1.0 AS Coefficient"],
+        "FROM": ["balanceNode"],
+        "JOIN": ["flow", "USING origin"]
+      }
+    },
+    "balanceNode_flowIn": {
+      "CLASS": "TERM",
+      "TYPE": "LINEAR",
+      "RECIPE": {
+        "SELECT": [
+          "'LINEAR' AS Type",
+          "balanceNode.Row AS Row",
+          "flow.Column AS Column",
+          "-1.0 AS Coefficient"],
+        "FROM": ["balanceNode"],
+        "JOIN": ["flow", "ON (balanceNode.origin = flow.destination)"]
+      }
+    },
+    "balanceEnter": {
+      "CLASS": "CONSTRAINT",
+      "TYPE": "LINEAR",
+      "RECIPE": {
+        "SELECT": [
+          "'balanceEnter' AS Name",
+          "parameters.entrance AS origin",
+          "CONCAT('balanceEnter') AS Row",
+          "'LINEAR' AS Type",
+          "'EQ' AS Sense",
+          "parameters.throughput AS RHS"],
+        "FROM": ["parameters"]
+      }
+    },
+    "balanceEnter_flowOut": {
+      "CLASS": "TERM",
+      "TYPE": "LINEAR",
+      "RECIPE": {
+        "SELECT": [
+          "'LINEAR' AS Type",
+          "balanceEnter.Row AS Row",
+          "flow.Column AS Column",
+          "1.0 AS Coefficient"],
+        "FROM": ["balanceEnter"],
+        "JOIN": ["flow", "USING origin"]
+      }
+    }
+  }
+}

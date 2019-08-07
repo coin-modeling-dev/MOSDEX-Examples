@@ -1,0 +1,186 @@
+{
+  "SYNTAX": "MOSDEX/newExamples/MOSDEXSchemaV1-1.json",
+  "generalTransshipment": {
+    "CLASS": "PROBLEM",
+    "HEADING": {
+      "DESCRIPTION": [
+        "General Transshipment Problem",
+        "instance form",
+        "MOSDEX 1.1 Syntax"
+      ],
+      "VERSION": "New 2.0 b",
+      "REFERENCE": "https://ampl.com/BOOK/EXAMPLES/EXAMPLES2/net1.mod",
+      "AUTHOR": "Jeremy A. Bloom (jeremyblmca@gmail.com)",
+      "NOTICES": ["Copyright © 2019 Jeremy A. Bloom"],
+      "MATH": [
+        "var Ship {(i,j) in LINKS} >= 0, <= capacity[i,j]; # packages to be shipped",
+        "minimize Total_Cost: sum {(i,j) in LINKS} cost[i,j] * Ship[i,j];",
+        "subject to",
+          "Balance {k in CITIES}: ",
+            "sum {(k,j) in LINKS} Ship[k,j] - sum {(i,k) in LINKS} Ship[i,k] = supply[k] - demand[k];"
+      ]
+    },
+    "ship": {
+      "CLASS": "VARIABLE",
+      "TYPE": "CONTINUOUS",
+      "SCHEMA": {
+        "Name": "STRING",
+        "origin": "STRING",
+        "destination": "STRING",
+        "Column": "STRING",
+        "Type": "STRING",
+        "LowerBound": "DOUBLE",
+        "UpperBound": "DOUBLE",
+        "Value": "DOUBLE"
+      },
+      "FIELDS": [
+        "Name",  "origin",  "destination",  "Column",       "Type", "LowerBound", "UpperBound", "Value"],
+      "INSTANCE": [
+        ["ship", "PITT",    "NE",           "ship_PITT_NE", "CONTINUOUS",  0.0,    250.0,       null  ],
+        ["ship", "PITT",    "SE",           "ship_PITT_SE", "CONTINUOUS",  0.0,    250.0,       null  ],
+        ["ship", "NE",      "BOS",          "ship_NE_BOS",  "CONTINUOUS",  0.0,    100.0,       null  ],
+        ["ship", "NE",      "EWR",          "ship_NE_EWR",  "CONTINUOUS",  0.0,    100.0,       null  ],
+        ["ship", "NE",      "BWI",          "ship_NE_BWI",  "CONTINUOUS",  0.0,    100.0,       null  ],
+        ["ship", "SE",      "EWR",          "ship_SE_EWR",  "CONTINUOUS",  0.0,    100.0,       null  ],
+        ["ship", "SE",      "BWI",          "ship_SE_BWI",  "CONTINUOUS",  0.0,    100.0,       null  ],
+        ["ship", "SE",      "ATL",          "ship_SE_ATL",  "CONTINUOUS",  0.0,    100.0,       null  ],
+        ["ship", "SE",      "MCO",          "ship_SE_MCO",  "CONTINUOUS",  0.0,    100.0,       null  ]
+      ]
+    },
+    "balance": {
+      "CLASS": "CONSTRAINT",
+      "TYPE": "LINEAR",
+      "SCHEMA": {
+        "Name": "STRING",
+        "city": "STRING",
+        "Row": "STRING",
+        "Type": "STRING",
+        "Sense": "STRING",
+        "RHS": "DOUBLE"
+      },
+      "FIELDS": [
+        "Name",     "city", "Row",          "Type",     "Sense",  "RHS"  ],
+      "INSTANCE": [
+        ["balance", "PITT", "balance_PITT",  "LINEAR",  "EQ",     450.0  ],
+        ["balance", "NE",   "balance_NE",    "LINEAR",  "EQ",     0.0    ],
+        ["balance", "SE",   "balance_SE",    "LINEAR",  "EQ",     0.0    ],
+        ["balance", "BOS",  "balance_BOS",   "LINEAR",  "EQ",     -90.0  ],
+        ["balance", "EWR",  "balance_EWR",   "LINEAR",  "EQ",     -120.0 ],
+        ["balance", "BWI",  "balance_BWI",   "LINEAR",  "EQ",     -120.0 ],
+        ["balance", "ATL",  "balance_ATL",   "LINEAR",  "EQ",     -70.0  ],
+        ["balance", "MCO",  "balance_MCO",   "LINEAR",  "EQ",     -50.0  ]
+      ]
+    },
+    "totalCost": {
+      "CLASS": "OBJECTIVE",
+      "TYPE": "LINEAR",
+      "SINGLETON": {
+        "Name": "totalCost",
+        "Row": "totalCost",
+        "Type": "LINEAR",
+        "Constant": 0.0,
+        "Sense": "MINIMIZE",
+        "Value": null
+      }
+    },
+    "balance_shipFrom": {
+      "CLASS": "TERM",
+      "TYPE": "LINEAR",
+      "SCHEMA": {
+        "Type": "STRING",
+        "Row": "STRING",
+        "Column": "STRING",
+        "Coefficient": "DOUBLE"
+      },
+      "FIELDS":
+        ["Type",    "Row",         "Column",       "Coefficient"],
+      "INSTANCE": [
+        ["LINEAR", "balance_PITT", "ship_PITT_NE", 1.0          ],
+        ["LINEAR", "balance_PITT", "ship_PITT_SE", 1.0          ],
+        ["LINEAR", "balance_NE",   "ship_NE_BOS",  1.0          ],
+        ["LINEAR", "balance_NE",   "ship_NE_EWR",  1.0          ],
+        ["LINEAR", "balance_NE",   "ship_NE_BWI",  1.0          ],
+        ["LINEAR", "balance_SE",   "ship_SE_EWR",  1.0          ],
+        ["LINEAR", "balance_SE",   "ship_SE_BWI",  1.0          ],
+        ["LINEAR", "balance_SE",   "ship_SE_ATL",  1.0          ],
+        ["LINEAR", "balance_SE",   "ship_SE_MCO",  1.0          ]
+      ]
+    },
+    "balance_shipTo": {
+      "CLASS": "TERM",
+      "TYPE": "LINEAR",
+      "SCHEMA": {
+        "Type": "STRING",
+        "Row": "STRING",
+        "Column": "STRING",
+        "Coefficient": "DOUBLE"
+      },
+      "FIELDS":
+        ["Type",    "Row",         "Column",         "Coefficient"],
+      "INSTANCE": [
+        ["LINEAR",  "balance_NE",  "ship_PITT_NE",   -1.0         ],
+        ["LINEAR",  "balance_SE",  "ship_PITT_SE",   -1.0         ],
+        ["LINEAR",  "balance_BOS", "ship_NE_BOS",    -1.0         ],
+        ["LINEAR",  "balance_EWR", "ship_NE_EWR",    -1.0         ],
+        ["LINEAR",  "balance_EWR", "ship_SE_EWR",    -1.0         ],
+        ["LINEAR",  "balance_BWI", "ship_NE_BWI",    -1.0         ],
+        ["LINEAR",  "balance_BWI", "ship_SE_BWI",    -1.0         ],
+        ["LINEAR",  "balance_ATL", "ship_SE_ATL",    -1.0         ],
+        ["LINEAR",  "balance_MCO", "ship_SE_MCO",    -1.0         ]
+      ]
+    },
+    "total_ship": {
+      "CLASS": "TERM",
+      "TYPE": "LINEAR",
+      "SCHEMA": {
+        "Type": "STRING",
+        "Row": "STRING",
+        "Column": "STRING",
+        "Coefficient": "DOUBLE"
+      },
+      "FIELDS":
+        ["Type",    "Row",       "Column",       "Coefficient"],
+      "INSTANCE": [
+        ["LINEAR",  "totalCost", "ship_PITT_NE", 2.5          ],
+        ["LINEAR",  "totalCost", "ship_PITT_SE", 3.5          ],
+        ["LINEAR",  "totalCost", "ship_NE_BOS",  1.7          ],
+        ["LINEAR",  "totalCost", "ship_NE_EWR",  0.7          ],
+        ["LINEAR",  "totalCost", "ship_NE_BWI",  1.3          ],
+        ["LINEAR",  "totalCost", "ship_SE_EWR",  1.3          ],
+        ["LINEAR",  "totalCost", "ship_SE_BWI",  0.8          ],
+        ["LINEAR",  "totalCost", "ship_SE_ATL",  0.2          ],
+        ["LINEAR",  "totalCost", "ship_SE_MCO",  2.1          ]
+      ]
+    },
+    "shipments": {
+      "CLASS": "DATA",
+      "TYPE": "OUTPUT",
+      "SCHEMA": {
+        "origin": "STRING",
+        "destination": "STRING",
+        "Value": "DOUBLE"
+      },
+      "FIELDS":
+        ["origin", "destination", "Value"                           ],
+      "INSTANCE": [
+        ["PITT",   "NE",          "Solver.getValue('ship_PITT_NE')" ],
+        ["PITT",   "SE",          "Solver.getValue('ship_PITT_SE')" ],
+        ["NE",     "BOS",         "Solver.getValue('ship_NE_BOS')"  ],
+        ["NE",     "EWR",         "Solver.getValue('ship_NE_EWR')"  ],
+        ["NE",     "BWI",         "Solver.getValue('ship_NE_BWI')"  ],
+        ["SE",     "EWR",         "Solver.getValue('ship_SE_EWR')"  ],
+        ["SE",     "BWI",         "Solver.getValue('ship_SE_BWI')"  ],
+        ["SE",     "ATL",         "Solver.getValue('ship_SE_ATL')"  ],
+        ["SE",     "MCO",         "Solver.getValue('ship_SE_MCO')"  ]
+      ]
+    },
+    "objective": {
+      "CLASS": "DATA",
+      "TYPE": "OUTPUT",
+      "SINGLETON": {
+        "Value": "Solver.getObjValue()"
+      }
+    }
+  }
+}
+
