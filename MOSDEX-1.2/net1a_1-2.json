@@ -1,0 +1,172 @@
+{
+  "SYNTAX": "MOSDEX/MOSDEX v1-2/MOSDEXSchemaV1-2.json",
+  "generalTransshipment": {
+    "CLASS": "PROBLEM",
+    "HEADING": {
+      "DESCRIPTION": [
+        "General Transshipment Problem",
+        "recipe form",
+        "MOSDEX 1-2 Syntax"
+      ],
+      "VERSION": ["a 1-2"],
+      "REFERENCE": ["https://ampl.com/BOOK/EXAMPLES/EXAMPLES2/net1.mod"],
+      "AUTHOR": ["Jeremy A. Bloom (jeremyblmca@gmail.com)"],
+      "NOTICES": ["Copyright © 2019 Jeremy A. Bloom"],
+      "MATH": [
+        "var Ship {(i,j) in LINKS} >= 0, <= capacity[i,j]; # packages to be shipped",
+        "minimize Total_Cost: sum {(i,j) in LINKS} cost[i,j] * Ship[i,j];",
+        "subject to",
+          "Balance {k in CITIES}: ",
+            "sum {(k,j) in LINKS} Ship[k,j] - sum {(i,k) in LINKS} Ship[i,k] = supply[k] - demand[k];"
+      ]
+    },
+    "cities": {
+      "CLASS": "DATA",
+      "TYPE": "INPUT",
+      "SCHEMA": {
+        "city": "STRING",
+        "supply": "DOUBLE",
+        "demand": "DOUBLE"
+      },
+      "FIELDS": ["city", "supply",  "demand"],
+      "INSTANCE": [
+        [        "PITT",  450.0,     0.0    ],
+        [        "NE",    0.0,       0.0    ],
+        [        "SE",    0.0,       0.0    ],
+        [        "BOS",   0.0,       90.0   ],
+        [        "EWR",   0.0,       120.0  ],
+        [        "BWI",   0.0,       120.0  ],
+        [        "ATL",   0.0,       70.0   ],
+        [        "MCO",   0.0,       50.0   ]
+      ]
+    },
+    "links": {
+      "CLASS": "DATA",
+      "TYPE": "INPUT",
+      "SCHEMA": {
+        "origin": "STRING",
+        "destination": "STRING",
+        "cost": "DOUBLE",
+        "capacity": "DOUBLE"
+      },
+      "FIELDS": ["origin",  "destination",  "cost", "capacity" ],
+      "INSTANCE": [
+        [         "PITT",    "NE",           2.5,    250.0     ],
+        [         "PITT",    "SE",           3.5,    250.0     ],
+        [         "NE",      "BOS",          1.7,    100.0     ],
+        [         "NE",      "EWR",          0.7,    100.0     ],
+        [         "NE",      "BWI",          1.3,    100.0     ],
+        [         "SE",      "EWR",          1.3,    100.0     ],
+        [         "SE",      "BWI",          0.8,    100.0     ],
+        [         "SE",      "ATL",          0.2,    100.0     ],
+        [         "SE",      "MCO",          2.1,    100.0     ]
+      ]
+    },
+    "ship": {
+      "CLASS": "VARIABLE",
+      "TYPE": "CONTINUOUS",
+      "RECIPE":[
+        {"DIRECTIVE": ["SELECT"], "PREDICATE": [
+          "'ship' AS Name",
+          "'CONTINUOUS' AS Type",
+          "origin", "destination",
+          "CONCAT('ship','_', origin,'_',destination) AS Column ",
+          "0.0 AS LowerBound",
+          "capacity AS UpperBound",
+          "NULL AS Value"]
+        },
+        {"DIRECTIVE": ["FROM"], "PREDICATE": ["links"]}
+      ]
+    },
+    "balance": {
+      "CLASS": "CONSTRAINT",
+      "TYPE": "LINEAR",
+      "RECIPE":[
+        {"DIRECTIVE": ["SELECT"], "PREDICATE": [
+          "'balance' AS Name",
+          "'LINEAR' AS Type",
+          "city",
+          "CONCAT('balance','_',city) AS Row",
+          "'EQ' AS Sense",
+          "(supply-demand) AS RHS"]
+        },
+        {"DIRECTIVE": ["FROM"], "PREDICATE": ["cities"]}
+      ]
+    },
+    "totalCost": {
+      "CLASS": "OBJECTIVE",
+      "TYPE": "LINEAR",
+      "SINGLETON": {
+        "Name":"totalCost",
+        "Row": "totalCost",
+        "Type": "LINEAR",
+        "Constant": 0.0,
+        "Sense": "MINIMIZE",
+        "Value": null
+      }
+    },
+    "balance_shipFrom": {
+      "CLASS": "TERM",
+      "TYPE": "LINEAR",
+      "RECIPE": [
+        {"DIRECTIVE": ["SELECT"], "PREDICATE": [
+          "'LINEAR' AS Type",
+          "balance.Row AS Row",
+          "ship.Column AS Column",
+          "1.0 AS Coefficient"]
+        },
+        {"DIRECTIVE": ["FROM"], "PREDICATE": ["balance"]},
+        {"DIRECTIVE": ["JOIN"], "PREDICATE": ["ship"]},
+        {"DIRECTIVE": ["ON"], "PREDICATE": [ "(balance.city == ship.origin)"]}
+      ]
+    },
+    "balance_shipTo": {
+      "CLASS": "TERM",
+      "TYPE": "LINEAR",
+      "RECIPE": [
+        {"DIRECTIVE": ["SELECT"], "PREDICATE": [
+          "'LINEAR' AS Type" ,
+          "balance.Row AS Row",
+          "ship.Column AS Column",
+          "-1.0 AS Coefficient"]
+        },
+        {"DIRECTIVE": ["FROM"], "PREDICATE": ["balance"]},
+        {"DIRECTIVE": ["JOIN"], "PREDICATE": ["ship"]},
+        {"DIRECTIVE": ["ON"], "PREDICATE":  ["(balance.city == ship.destination)"]}
+      ]
+    },
+    "total_ship": {
+      "CLASS": "TERM",
+      "TYPE": "LINEAR",
+      "RECIPE": [
+        {"DIRECTIVE": ["SELECT"], "PREDICATE": [
+          "'LINEAR' AS Type",
+          "totalCost.Row AS Row",
+          "ship.Column AS Column",
+          "links.cost AS Coefficient"]
+        },
+        {"DIRECTIVE": ["FROM"], "PREDICATE":  ["totalCost"]},
+        {"DIRECTIVE": ["JOIN"], "PREDICATE": ["ship"]},
+        {"DIRECTIVE": ["JOIN"], "PREDICATE": [" links"]},
+        {"DIRECTIVE": ["ON"], "PREDICATE": ["(links.origin == ship.origin)", "AND", "(links.destination == ship.destination)"]}
+      ]
+    },
+    "shipments": {
+      "CLASS": "DATA",
+      "TYPE": "OUTPUT",
+      "RECIPE": [
+        {"DIRECTIVE": ["SELECT"], "PREDICATE": ["origin", "destination", "Value AS shipment"]},
+        {"DIRECTIVE": ["FROM"], "PREDICATE": ["ship"]}
+      ]
+    },
+    "objective": {
+      "CLASS": "DATA",
+      "TYPE": "OUTPUT",
+      "RECIPE": [
+        {"DIRECTIVE": ["SELECT"], "PREDICATE": ["Value AS TotalCost"]},
+        {"DIRECTIVE": ["FROM"], "PREDICATE": ["totalCost"]}
+      ]
+    }
+  }
+}
+
