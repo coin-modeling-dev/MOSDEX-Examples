@@ -1,87 +1,95 @@
 {
   "SYNTAX": "MOSDEX/MOSDEX v1-2/MOSDEXSchemaV1-2.json",
-  "volsay": {
+  "newsvendor": {
     "CLASS": "PROBLEM",
     "HEADING": {
       "DESCRIPTION": [
-        "Linear program in instance form",
-        "MOSDEX is probably overkill for this simple 4 constraint, 2 variable problem",
-        "but you don't need a solver for this problem either.",
-        "MOSDEX is intended for very large problems encountered in real-world applications",
-        "and in such cases, recipe form provides a very compact propblem representation.",
+        "Newsvendor problem.",
+        "Canonical stochastic program.",
+        "Shows use of database technology to bring in sales data.",
         "MOSDEX 1-2 Syntax"
       ],
-      "VERSION": ["1-2"],
-      "REFERENCE": ["https://www.ibm.com/support/knowledgecenter/en/SSSA5P_12.5.0/ilog.odms.ide.help/OPL_Studio/opllanguser/topics/opl_languser_shortTour_LP_prodplanning.html"],
-      "AUTHOR": ["Jeremy A. Bloom (jeremyblmca@gmail.com)"],
-      "NOTICES": ["Copyright © 2019 Jeremy A. Bloom"],
-      "MATH": [
-        "maximize   40 * Gas + 50 * Chloride;",
-        "subject to {",
-          "ctMaxTotal: Gas + Chloride <= 50;",
-          "ctMaxTotal2: 3 * Gas + 4 * Chloride <= 180;",
-          "ctMaxChloride: Chloride <= 40;",
-        "}"
+      "VERSION": [
+        "1-2"
+      ],
+      "AUTHOR": [
+        "Alan J. King (kingaj@us.ibm.com)"
+      ],
+      "NOTICES": [
+        "Copyright © 2019 IBM "
       ]
     },
-    "gas": {
+    "budget": {
+      "CLASS": "DATA",
+      "TYPE": "INPUT",
+      "SCHEMA": {
+        "budget": "DOUBLE"
+      },
+      "INSTANCE": [ [1000.0] ]
+    },
+    "unit_cost": {
+      "CLASS": "DATA",
+      "TYPE": "INPUT",
+      "SCHEMA": {
+        "Name": "STRING",
+        "title": "STRING",
+        "unit_cost": "DOUBLE"
+      },
+      "KEYS": [ "title" ],
+      "FIELDS": [ "Name","title", "unit_cost" ],
+      "INSTANCE": [
+        [ "cost","Wall_Street_Journal", 1.75 ],
+        [ "cost","New_York_Times",      1.50 ]
+      ]
+    },
+    "order": {
       "CLASS": "VARIABLE",
-      "TYPE": "CONTINUOUS",
-      "SINGLETON": {
-        "Name": "gas",
-        "Column": "gas",
-        "Type": "CONTINUOUS",
-        "LowerBound": 0.0,
-        "UpperBound": "infinity",
-        "Value": null
-      }
+      "TYPE": "INTEGER",
+      "SCHEMA": {
+        "Name": "STRING",
+        "title": "STRING",
+        "Column": "STRING",
+        "LowerBound": "INTEGER",
+        "UpperBound": "INTEGER",
+        "primal": "INTEGER",
+        "Type": "STRING"
+      },
+      "KEYS": ["title"],
+      "FIELDS": ["Name", "title", "Column","LowerBound", "UpperBound", "primal"],
+      "INSTANCE": [
+        ["order", "Wall_Street_Journal", "order_WSJ", 0, 1000, null, "INTEGER"],
+        ["order", "New_York_Times",      "order_NYT", 0, 1000, null, "INTEGER"]
+      ]
     },
-    "chloride": {
+    "sold": {
       "CLASS": "VARIABLE",
-      "TYPE": "CONTINUOUS",
-      "SINGLETON": {
-        "Name": "chloride",
-        "Column": "chloride",
-        "Type": "CONTINUOUS",
-        "LowerBound": 0.0,
-        "UpperBound": "infinity",
-        "Value": null
-      }
+      "TYPE": "INTEGER",
+      "SCHEMA": {
+        "Name": "STRING",
+        "title": "STRING",
+        "Column": "STRING",
+        "LowerBound": "INTEGER",
+        "UpperBound": "INTEGER",
+        "primal": "INTEGER",
+        "Type": "STRING"
+      },
+      "KEYS": ["title"],
+      "FIELDS": ["Name", "title", "LowerBound", "UpperBound", "primal"],
+      "INSTANCE": [
+        ["sold", "Wall_Street_Journal", "sold_WSJ", 0, 1000, null, "INTEGER"],
+        ["sold", "New_York_Times",      "sold_NYT", 0, 1000, null, "INTEGER"]
+      ]
     },
-    "ctMaxTotal": {
+    "unsold": {
       "CLASS": "CONSTRAINT",
       "TYPE": "LINEAR",
-      "SINGLETON": {
-        "Name": "ctMaxTotal",
-        "Row": "ctMaxTotal",
-        "Type": "LINEAR",
-        "Sense": "<=",
-        "RHS": 50.0,
-        "dual": null
-      }
-    },
-    "ctMaxTotal2": {
-      "CLASS": "CONSTRAINT",
-      "TYPE": "LINEAR",
-      "SINGLETON": {
-        "Name": "ctMaxTotal2",
-        "Row": "ctMaxTotal2",
-        "Type": "LINEAR",
-        "Sense": "<=",
-        "RHS": 180.0,
-        "dual": null
-      }
-    },
-    "ctChloride": {
-      "CLASS": "CONSTRAINT",
-      "TYPE": "LINEAR",
-      "SINGLETON": {
-        "Name": "ctChloride",
-        "Row": "ctChloride",
-        "Type": "LINEAR",
-        "Sense": "<=",
-        "RHS": 40.0,
-        "dual": null
+      "KEYS": ["title"],
+      "RECIPE": {
+        "Name": "unsold",
+        "Sense": "GE",
+        "Dual":  null,
+        "Formula": ["MINUS", "order","sold"],
+        "RHS": 0.0
       }
     },
     "profit": {
@@ -94,7 +102,7 @@
         "Constant": 0.0,
         "Sense": "MAXIMIZE",
         "Value": null
-     }
+      }
     },
     "profit_gas": {
       "CLASS": "TERM",
@@ -175,5 +183,4 @@
         "profit": "#Solver.getObjValue()"
       }
     }
-  }
-}
+  }  }
