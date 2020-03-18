@@ -3,7 +3,7 @@ import os
 from jsonschema import Draft7Validator
 import pprint
 
-example_dir = "../../MOSDEX-Examples/MOSDEX-1.2"
+example_dir = "../../MOSDEX-1.2"
 
 cutting_stock_file = "cuttingStock_1-2.json"
 with open(os.path.join(example_dir, cutting_stock_file)) as f:
