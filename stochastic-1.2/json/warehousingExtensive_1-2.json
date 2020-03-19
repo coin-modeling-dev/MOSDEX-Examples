@@ -1,0 +1,609 @@
+{
+  "SYNTAX": "MOSDEX/MOSDEX v1-2/MOSDEXSchemaV1-2.json",
+  "warehouseModel": {
+    "CLASS": "PROBLEM",
+    "HEADING": {
+      "DESCRIPTION": [
+        "Warehouse location problem",
+        "with uncertain sales",
+        "extensive form",
+        "MOSDEX 1-2 Syntax"
+      ],
+      "VERSION": ["1-2"],
+      "REFERENCE": ["https://github.com/JeremyBloom/Optimization---Sample-Notebooks/blob/master/Locating%2BWarehouses%2Bto%2BMinimize%2BCosts%2BCase%2B2%2Bpub%2B3.html"],
+      "AUTHOR": ["Jeremy A. Bloom (jeremyblmca@gmail.com)"],
+      "NOTICES": ["Copyright © 2019 Jeremy A. Bloom"],
+      "MATH": [
+        "dvar boolean open[warehouses];",
+        "dvar float+ capacity[warehouses];",				"//pallets",
+        "dvar float+ ship[scenarios, routes] in 0.0..1.0;",	"//percentage of each store's demand shipped on each route in each scenario",
+        "",
+        "dexpr float capitalCost= sum(w in warehouses) (w.fixedCost*open[w] + w.capacityCost*capacity[w]);",
+        "dexpr float operatingCost[t in scenarios]= sum(r in routes) r.shippingCost*demand[t, r]*ship[t, r];",
+        "dexpr float totalOperatingCost= sum(t in scenarios) t.periods*operatingCost[t];",
+        "dexpr float totalCost= capitalCost + totalOperatingCost;",	"// $/yr",
+        "",
+        "constraint ctCapacity[scenarios, warehouses];",
+        "constraint ctDemand[scenarios, stores];",
+        "constraint ctSupply[scenarios, routes];",
+         "",
+        "minimize totalCost;",
+        "subject to {",
+          "",
+          "forall(t in scenarios, w in warehouses)",
+          "//Cannot ship more out of a warehouse than its capacity",
+            "ctCapacity[t, w]: capacity[w] >= sum(r in routes: r.location==w.location) demand[t, r]*ship[t, r];",
+             
+          "forall(t in scenarios, s in stores)",
+          "//Must ship at least 100% of each store's demand",
+            "ctDemand[t, s]: sum(r in routes: r.store==s.storeId) ship[t, r] >= 1.0;",
+             "",
+          "forall(t in scenarios, r in routes, w in warehouses: w.location==r.location)",
+          "//Can only ship along a supply route if its warehouse is open",
+            "ctSupply[t, r]: -ship[t, r] >= -open[w]; //ship[r] <= open[w]",
+        "}",
+        ""
+      ]
+    },
+    "warehouses": {
+      "CLASS": "DATA",
+      "TYPE": "INPUT",
+      "SCHEMA": {
+        "location": "STRING",
+        "fixedCost": "DOUBLE",
+        "capacityCost": "DOUBLE"
+      },
+      "IMPORT_FROM": ["warehouseData.warehouses"]
+    },
+    "routes": {
+      "CLASS": "DATA",
+      "TYPE": "INPUT",
+      "SCHEMA": {
+        "location": "STRING",
+        "store": "STRING",
+        "shippingCost": "DOUBLE"
+      },
+      "IMPORT_FROM": ["warehouseData.routes"]
+    },
+    "stores": {
+      "CLASS": "DATA",
+      "TYPE": "INPUT",
+      "SCHEMA": {
+        "store": "STRING"
+      },
+      "IMPORT_FROM": ["warehouseData.stores"]
+    },
+    "demands": {
+      "CLASS": "DATA",
+      "TYPE": "INPUT",
+      "SCHEMA": {
+        "store": "STRING",
+        "scenarioId": "STRING",
+        "amount": "DOUBLE"
+      },
+      "IMPORT_FROM": ["warehouseData.demands"]
+    },
+    "scenarios": {
+      "CLASS": "DATA",
+      "TYPE": "INPUT",
+      "SCHEMA": {
+        "scenarioId": "STRING",
+        "totalDemand": "DOUBLE",
+        "periods":  "DOUBLE"
+      },
+      "IMPORT_FROM": ["warehouseData.scenarios"]
+    },
+    "open": {
+      "CLASS": "VARIABLE",
+      "TYPE": "BINARY",
+      "RECIPE": [
+        {"DIRECTIVE": ["SELECT"], "PREDICATE": [
+          "'open' AS Name",
+          "'BINARY' AS Type",
+          "location",
+          "CONCAT('open','_', location) AS Column",
+          "0 AS LowerBound",
+          "1 AS UpperBound",
+          "null AS Value"]
+        },
+        {"DIRECTIVE": ["FROM"], "PREDICATE": ["warehouses"]}
+      ]
+    },
+    "capacity": {
+      "CLASS": "VARIABLE",
+      "TYPE": "CONTINUOUS",
+      "RECIPE": [
+        {"DIRECTIVE": ["SELECT"], "PREDICATE": [
+          "'capacity' AS Name",
+          "'CONTINUOUS' AS Type",
+          "location",
+          "CONCAT('capacity','_', location) AS Column",
+          "0.0 AS LowerBound",
+          "'infinity' AS UpperBound",
+          "null AS Value"]
+        },
+        {"DIRECTIVE": ["FROM"], "PREDICATE": ["warehouses"]}
+      ]
+    },
+    "ship": {
+      "CLASS": "VARIABLE",
+      "TYPE": "CONTINUOUS",
+      "RECIPE": [
+        {"DIRECTIVE": ["SELECT"], "PREDICATE": [
+          "'ship' AS Name",
+          "'CONTINUOUS' AS Type",
+          "scenarioId",
+          "location",
+          "store",
+          "CONCAT('ship','_', scenarioId,'_', location,'_', store) AS Column",
+          "0.0 AS LowerBound",
+          "1.0 AS UpperBound",
+          "null AS Value"]
+        },
+        {"DIRECTIVE": ["FROM"], "PREDICATE": ["routes", "scenarios"]}
+      ]
+    },
+    "ctCapacity": {
+      "CLASS": "CONSTRAINT",
+      "TYPE": "LINEAR",
+      "RECIPE": [
+        {"DIRECTIVE": ["QUERY"], "PREDICATE": [
+          "SELECT",
+            "'ctCapacity' AS Name",
+            "'LINEAR' AS Type",
+            "scenarioId",
+            "location",
+            "CONCAT('ctCapacity','_', scenarioId,'_', location) AS Row",
+            "'>=' AS Sense",
+            "0.0 AS RHS",
+          "FROM", "warehouses", "scenarios"]
+        }
+      ]
+    },
+    "ctCapacity_capacity": {
+      "CLASS": "TERM",
+      "TYPE": "LINEAR",
+      "RECIPE": [
+        {"DIRECTIVE": ["QUERY"], "PREDICATE": [
+          "SELECT",
+            "'LINEAR' AS Type",
+            "ctCapacity.Row AS Row",
+            "capacity.Column AS Column",
+            "1.0 AS Coefficient",
+          "FROM", "ctCapacity",
+          "JOIN", "capacity", "USING", "location"]
+        }
+      ]
+    },
+    "ctCapacity_ship": {
+      "CLASS": "TERM",
+      "TYPE": "LINEAR",
+      "RECIPE": [
+        {"DIRECTIVE": ["QUERY"], "PREDICATE": [
+          "SELECT",
+            "'LINEAR' AS Type",
+            "ctCapacity.Row AS Row",
+            "ship.Column AS Column",
+            "-demands.amount AS Coefficient",
+          "FROM", "ctCapacity",
+          "JOIN", "ship", "USING", "location", "scenarioId",
+          "JOIN", "demands", "USING", "store", "scenarioId"]
+        }
+      ]
+    },
+    "ctDemand": {
+      "CLASS": "CONSTRAINT",
+      "TYPE": "LINEAR",
+      "RECIPE": [
+        {"DIRECTIVE": ["QUERY"], "PREDICATE": [
+          "SELECT",
+            "'ctDemand' AS Name",
+            "'LINEAR' AS Type",
+            "scenarioId",
+            "store",
+            "CONCAT('ctDemand','_', scenarioId,'_', store) AS Row",
+            "'>=' AS Sense",
+            "1.0 AS RHS",
+          "FROM", "stores", "scenarios"]
+        }
+      ]
+    },
+    "ctDemand_ship": {
+      "CLASS": "TERM",
+      "TYPE": "LINEAR",
+      "RECIPE": [
+        {"DIRECTIVE": ["QUERY"], "PREDICATE": [
+          "SELECT",
+            "'LINEAR' AS Type",
+            "ctDemand.Row AS Row",
+            "ship.Column AS Column",
+            "1.0 AS Coefficient",
+          "FROM", "ctDemand",
+          "JOIN", "ship", "USING", "store", "scenarioId"]
+        }
+      ]
+    },
+    "ctSupply": {
+      "CLASS": "CONSTRAINT",
+      "TYPE": "LINEAR",
+      "RECIPE": [
+        {"DIRECTIVE": ["QUERY"], "PREDICATE": [
+          "SELECT",
+            "'ctSupply' AS Name",
+            "'LINEAR' AS Type",
+            "scenarioId",
+            "location",
+            "store",
+            "CONCAT('ctSupply','_', location,'_', store) AS Row",
+            "'<=' AS Sense",
+            "0.0 AS RHS",
+          "FROM", "routes", "scenarios"]
+        }
+      ]
+    },
+    "ctSupply_open":{
+      "CLASS": "TERM",
+      "TYPE": "LINEAR",
+      "RECIPE": [
+        {"DIRECTIVE": ["QUERY"], "PREDICATE": [
+          "SELECT",
+            "'LINEAR' AS Type",
+            "ctSupply.Row AS Row",
+            "open.Column AS Column",
+            "-1.0 AS Coefficient",
+          "FROM", "ctSupply",
+          "JOIN", "open", "USING", "location"]
+        }
+      ]
+    },
+    "ctSupply_ship": {
+      "CLASS": "TERM",
+      "TYPE": "LINEAR",
+      "RECIPE": [
+        {"DIRECTIVE": ["QUERY"], "PREDICATE": [
+          "SELECT",
+            "'LINEAR' AS Type",
+            "ctSupply.Row AS Row",
+            "ship.Column AS Column",
+            "1.0 AS Coefficient",
+          "FROM", "ctSupply",
+          "JOIN", "ship", "USING", "location", "scenarioId"]
+        }
+      ]
+    },
+    "capitalCost": {
+      "CLASS": "VARIABLE",
+      "TYPE": "CONTINUOUS",
+      "SINGLETON": {
+        "Name": "capitalCost",
+        "Type": "CONTINUOUS",
+        "Column": "capitalCost",
+        "LowerBound": 0.0,
+        "UpperBound": "infinity",
+        "Value": null
+      }
+    },
+    "deCapitalCost": {
+      "CLASS": "CONSTRAINT",
+      "TYPE": "LINEAR",
+      "SINGLETON": {
+        "Name": "deCapitalCost",
+        "Type": "LINEAR",
+        "Row": "deCapitalCost",
+        "Sense": "==",
+        "RHS": 0.0
+      }
+    },
+    "deCapitalCost_open": {
+      "CLASS": "TERM",
+      "TYPE": "LINEAR",
+      "RECIPE": [
+        {"DIRECTIVE": ["QUERY"], "PREDICATE": [
+          "SELECT",
+            "'LINEAR' AS Type",
+            "'deCapitalCost' AS Row",
+            "open.Column AS Column",
+            "warehouses.fixedCost AS Coefficient",
+          "FROM", "deCapitalCost",
+          "JOIN", "open", "USING", "location"]
+        }
+      ]
+    },
+    "deCapitalCost_capacity": {
+      "CLASS": "TERM",
+      "TYPE": "LINEAR",
+      "RECIPE": [
+        {"DIRECTIVE": ["QUERY"], "PREDICATE": [
+          "SELECT",
+            "'LINEAR' AS Type",
+            "'deCapitalCost' AS Row",
+            "capacity.Column AS Column",
+            "warehouses.capacityCost AS Coefficient",
+          "FROM", "deCapitalCost",
+          "JOIN", "capacity", "USING", "location"]
+        }
+      ]
+    },
+    "deCapitalCost_capitalCost": {
+      "CLASS": "TERM",
+      "TYPE": "LINEAR",
+      "SINGLETON": {
+        "Type": "LINEAR",
+        "Row": "deCapitalCost",
+        "Column": "capitalCost",
+        "Coefficient": -1.0
+      }
+  },
+    "operatingCost": {
+      "CLASS": "VARIABLE",
+      "TYPE": "CONTINUOUS",
+      "RECIPE": [
+        {"DIRECTIVE": ["QUERY"], "PREDICATE": [
+          "SELECT",
+            "'operatingCost' AS Name",
+            "'CONTINUOUS' AS Type",
+            "scenarioId",
+            "CONCAT('operatingCost','_',scenarioId) AS Column",
+            "0.0 AS LowerBound",
+            "infinity AS UpperBound",
+            "null AS Value",
+          "FROM", "scenarios"]
+        }
+      ]
+    },
+    "deOperatingCost": {
+      "CLASS": "CONSTRAINT",
+      "TYPE": "LINEAR",
+      "RECIPE": [
+        {"DIRECTIVE": ["QUERY"], "PREDICATE": [
+          "SELECT",
+            "'deOperatingCost' AS Name",
+            "'LINEAR' AS Type",
+            "scenarioId",
+            "CONCAT('deOperatingCost','_', scenarioId) AS Row",
+            "'==' AS Sense",
+            "0.0 AS RHS",
+          "FROM", "scenarios"]
+        }
+      ]
+    },
+    "deOperatingCost_ship": {
+      "CLASS": "TERM",
+      "TYPE": "LINEAR",
+      "RECIPE": [
+        {"DIRECTIVE": ["QUERY"], "PREDICATE": [
+          "SELECT",
+            "'LINEAR' AS Type",
+            "'deOperatingCost.Row' AS Row",
+            "ship.Column AS Column",
+            "routes.shippingCost AS Coefficient",
+          "FROM", "deOperatingCost",
+          "JOIN", "routes", "USING", "(location, store)",
+          "JOIN", "ship", "USING", "(scenarioId, location, store)"]
+        }
+      ]
+    },
+    "deOperatingCost_operatingCost": {
+      "CLASS": "TERM",
+      "TYPE": "LINEAR",
+      "RECIPE": [
+        {"DIRECTIVE": ["QUERY"], "PREDICATE": [
+          "SELECT",
+            "'LINEAR' AS Type",
+            "deOperatingCost.Row AS Row",
+            "operatingCost.Column AS Column",
+            "-1.0 AS Coefficient",
+          "FROM", "operatingCost",
+          "JOIN", "deOperatingCost", "USING", "scenarioId"]
+        }
+      ]
+    },
+    "totalCost": {
+      "CLASS": "OBJECTIVE",
+      "TYPE": "LINEAR",
+      "SINGLETON": {
+        "Name": "totalCost",
+        "Type": "LINEAR",
+        "Row": "totalCost",
+        "Constant": 0.0,
+        "Sense": "MINIMIZE",
+        "Value": null
+      }
+    },
+    "totalCost_capitalCost": {
+      "CLASS": "TERM",
+      "TYPE": "LINEAR",
+      "SINGLETON": {
+        "Type": "LINEAR",
+        "Row": "totalCost",
+        "Column": "capitalCost",
+        "Coefficient": 1.0
+      }
+    },
+    "totalCost_operatingCost": {
+      "CLASS": "TERM",
+      "TYPE": "LINEAR",
+        "RECIPE": [
+          {"DIRECTIVE": ["QUERY"], "PREDICATE": [
+            "SELECT",
+              "'LINEAR' AS Type",
+              "totalCost.Row AS Row",
+              "operatingCost.Column AS Column",
+              "1.0 AS Coefficient",
+            "FROM", "totalCost", "deOperatingCost"]
+          }
+        ]
+      },
+    "objectives": {
+      "CLASS": "DATA",
+      "TYPE": "OUTPUT",
+      "RECIPE": [
+        {"DIRECTIVE": ["QUERY"], "PREDICATE": [
+          "SELECT",
+            "'Warehousing' AS problem",
+            "Name AS dexpr",
+            "scenarioId",
+            "#Solver.getObjValue() AS totalCost",
+            "#Solver.getValue('capitalCost') AS capitalCost",
+            "#Solver.getValue('operatingCost') AS operatingCost",
+          "FROM", "capitalCost",
+          "UNION","operatingCost"]
+        }
+      ]
+    },
+    "openWarehouses": {
+      "CLASS": "DATA",
+      "TYPE": "OUTPUT",
+      "SCHEMA": {
+        "location": "STRING",
+        "open": "INTEGER",
+        "capacity": "DOUBLE"
+      },
+      "RECIPE": [
+        {"DIRECTIVE": ["QUERY"], "PREDICATE": [
+          "SELECT",
+            "open.location AS location",
+            "#Solver.getValue(open.Column) AS open",
+            "#Solver.getValue(capacity.Column) AS Capacity",
+          "FROM", "open",
+          "JOIN", "capacity", "USING", "Column"]
+        }
+      ]
+    },
+    "shipments": {
+      "CLASS": "DATA",
+      "TYPE": "OUTPUT",
+      "SCHEMA": {
+        "location": "STRING",
+        "store": "STRING",
+        "amount": "DOUBLE"
+      },
+      "RECIPE": [
+        {"DIRECTIVE": ["QUERY"], "PREDICATE": [
+          "SELECT",
+            "scenarioId",
+            "location",
+            "store",
+            "#Solver.getValue(ship.Column) AS amount",
+          "FROM", "ship",
+          "WHERE", "amount > 0.0"]
+        }
+      ]
+    }
+  },
+  "warehouseData": {
+    "CLASS": "PROBLEM",
+    "HEADING": {
+      "DESCRIPTION": ["Data for warehouse location problem"]
+    },
+    "warehouses": {
+      "CLASS": "DATA",
+      "TYPE": "INPUT",
+      "SCHEMA": {
+        "location": "STRING",
+        "fixedCost": "DOUBLE",
+        "capacityCost": "DOUBLE"
+      },
+      "FIELDS": [
+          "location",     "fixedCost", "capacityCost"],
+      "INSTANCE": [
+        [ "Brockton, MA", 550000.0,    148.0],
+        [ "Bristol, CT",  600000.0,    148.0]
+      ]
+    },
+    "routes": {
+      "CLASS": "DATA",
+      "TYPE": "INPUT",
+      "SCHEMA": {
+        "location": "STRING",
+        "store": "STRING",
+        "shippingCost": "DOUBLE"
+      },
+      "FIELDS": [
+            "location",     "store",           "shippingCost"],
+      "INSTANCE": [
+         [  "Brockton, MA",	"Malden, MA",	    42.94     ],
+         [  "Brockton, MA",	"Medford, MA",	    41.43     ],
+         [  "Brockton, MA",	"Quincy, MA",	    18.61     ],
+         [  "Brockton, MA",	"Brockton, MA",	    0.0       ],
+         [  "Brockton, MA",	"Bristol, CT",	    186.05    ],
+         [  "Brockton, MA",	"Manchester, CT",	144.12    ],
+         [  "Brockton, MA",	"Milford, CT",	    217.46    ],
+         [  "Brockton, MA",	"New Haven, CT",	201.55    ],
+         [  "Brockton, MA",	"Stamford, CT",	    267.37    ],
+         [  "Bristol, CT",	"Malden, MA",	    197.68    ],
+         [  "Bristol, CT",	"Medford, MA",	    191.09    ],
+         [  "Bristol, CT",	"Quincy, MA",	    191.12    ],
+         [  "Bristol, CT",	"Brockton, MA",	    186.05    ],
+         [  "Bristol, CT",	"Bristol, CT",	    0.0       ],
+         [  "Bristol, CT",	"Manchester, CT",	41.96     ],
+         [  "Bristol, CT",	"Milford, CT",	    56.67     ],
+         [  "Bristol, CT",	"New Haven, CT",	44.54     ],
+         [  "Bristol, CT",	"Stamford, CT",	    94.66     ]
+      ]
+    },
+    "stores": {
+      "CLASS": "DATA",
+      "TYPE": "INPUT",
+      "SCHEMA": {
+        "store": "STRING"
+      },
+      "INSTANCE": [
+        ["Malden, MA"     ],
+        ["Medford, MA"    ],
+        ["Quincy, MA"     ],
+        ["Brockton, MA"   ],
+        ["Bristol, CT"    ],
+        ["Manchester, CT" ],
+        ["Milford, CT"    ],
+        ["New Haven, CT"  ],
+        ["Stamford, CT"   ]
+      ]
+    },
+    "scenarios": {
+      "CLASS": "DATA",
+      "TYPE": "INPUT",
+      "SCHEMA": {
+        "scenarioId": "STRING",
+        "totalDemand": "DOUBLE",
+        "periods": "DOUBLE"
+      },
+      "FIELDS": [
+            "scenarioId",          "totalDemand",   "periods" ],
+      "INSTANCE": [
+        [    "0",                   571.0,           0.5      ],
+        [    "1",                   573.0,           0.5      ]
+      ]
+    },
+    "demands": {
+      "CLASS": "DATA",
+      "TYPE": "INPUT",
+      "SCHEMA": {
+        "store": "STRING",
+        "amount": "DOUBLE"
+      },
+      "FIELDS": [
+            "store",          "scenarioId",   "amount"],
+      "INSTANCE": [
+        [  "Malden, MA",     "0",            104.0   ],
+        [  "Medford, MA",    "0",            50.0    ],
+        [  "Quincy, MA",     "0",            25.0    ],
+        [  "Brockton, MA",   "0",            28.0    ],
+        [  "Bristol, CT",    "0",            28.0    ],
+        [  "Manchester, CT", "0",            80.0    ],
+        [  "Milford, CT",    "0",            103.0   ],
+        [  "New Haven, CT",  "0",            80.0    ],
+        [  "Stamford, CT",   "0",            73.0    ],
+        [  "Malden, MA",     "1",            106.0   ],
+        [  "Medford, MA",    "1",            48.0    ],
+        [  "Quincy, MA",     "1",            27.0    ],
+        [  "Brockton, MA",   "1",            22.0    ],
+        [  "Bristol, CT",    "1",            30.0    ],
+        [  "Manchester, CT", "1",            82.0    ],
+        [  "Milford, CT",    "1",            105.0   ],
+        [  "New Haven, CT",  "1",            78.0    ],
+        [  "Stamford, CT",   "1",            75.0    ]
+      ]
+    }
+  }
+}
