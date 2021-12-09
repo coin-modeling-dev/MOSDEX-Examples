@@ -1,0 +1,21 @@
+New MOSDEX syntax summary:
+-Eliminated named objects (Problems and Tables)
+--All objects now have a keyword as field name
+--The MOSDEX File has a Modules array
+--The MOSDEX Module has a Tables array
+--Problem has been renamed Module
+-New syntax for schema
+--Eliminated named fields in favor of two arrays: FIELDS and TYPES
+--Horizontal layout aligns over the instance columns and eliminates a separate Fields array (this is not part of the standard; JSON doesn’t care about the layout)
+-Function calls
+--Needed for retrieving the solution
+--Define a data type for function calls for use in the schema
+--Parse the function call from a string in the MOSDEX File
+-Type (schema) information added in SELECT Queries
+--MOSDEX supports data types (IEEEDOUBLE, Function calls) that are not supported in SQL.
+--MOSDEX needs to carry this type information through its data transformations from input -> model -> output
+--Solution: add the type information as comments (denoted by --) in the SQL 
+-Solver result calls are specified as part of the relevant modeling object.
+--Results can be reformatted as OUTPUT DATA tables using SQL.
+-UPDATE query field added to table to facilitate iterative modular structures
+--e.g. decomposition
