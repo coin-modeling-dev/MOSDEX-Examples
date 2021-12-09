@@ -1,0 +1,198 @@
+{
+  "SYNTAX": "",
+  "MODULES": [
+    {
+      "NAME": "data",
+      "CLASS": "MODULE",
+      "HEADING": {
+        "DESCRIPTION": ["Data for General Transshipment Problem"]
+      },
+      "TABLES": [
+        {
+        "NAME": "cities",
+        "CLASS": "DATA",
+        "KIND": "INPUT",
+        "SCHEMA": {
+          "FIELDS": [ "city",   "supply",  "demand"],
+          "TYPES": [  "STRING", "DOUBLE",  "DOUBLE"]
+        },
+        "INSTANCE": [
+          [           "PITT",   450.0,     0.0    ],
+          [           "NE",     0.0,       0.0    ],
+          [           "SE",     0.0,       0.0    ],
+          [           "BOS",    0.0,       90.0   ],
+          [           "EWR",    0.0,       120.0  ],
+          [           "BWI",    0.0,       120.0  ],
+          [           "ATL",    0.0,       70.0   ],
+          [           "MCO",    0.0,       50.0   ]
+        ]
+        },
+        {
+          "NAME": "routes",
+          "CLASS": "DATA",
+          "KIND": "INPUT",
+          "SCHEMA": {
+            "FIELDS": [ "origin",  "destination", "cost",   "capacity" ],
+            "TYPES": [  "STRING",  "STRING",      "DOUBLE", "DOUBLE"]
+          },
+          "INSTANCE": [
+            [           "PITT",    "NE",           2.5,     250.0     ],
+            [           "PITT",    "SE",           3.5,     250.0     ],
+            [           "NE",      "BOS",          1.7,     100.0     ],
+            [           "NE",      "EWR",          0.7,     100.0     ],
+            [           "NE",      "BWI",          1.3,     100.0     ],
+            [           "SE",      "EWR",          1.3,     100.0     ],
+            [           "SE",      "BWI",          0.8,     100.0     ],
+            [           "SE",      "ATL",          0.2,     100.0     ],
+            [           "SE",      "MCO",          2.1,     100.0     ]
+          ]
+        }
+      ]
+    },
+    {
+      "NAME": "modelingObjects",
+      "KIND": "MODULE",
+      "HEADING": {
+        "DESCRIPTION": [
+          "General Transshipment Problem",
+          "query form",
+          "MOSDEX 2-0 Syntax"
+        ],
+        "VERSION": ["a 2-1"],
+        "REFERENCE": ["https://ampl.com/BOOK/EXAMPLES/EXAMPLES2/net1.mod"],
+        "AUTHOR": ["Jeremy A. Bloom (jeremyblmca@gmail.com)"],
+        "NOTICES": ["Copyright © 2019 Jeremy A. Bloom"],
+        "MATH": [
+          "var Ship {(i,j) in ROUTES} >= 0, <= capacity[i,j]; # packages to be shipped",
+          "minimize Total_Cost: sum {(i,j) in ROUTES} cost[i,j] * Ship[i,j];",
+          "subject to",
+            "Balance {k in CITIES}: ",
+              "sum {(k,j) in ROUTES} Ship[k,j] - sum {(i,k) in ROUTES} Ship[i,k] = supply[k] - demand[k];"
+        ]
+      },
+      "TABLES": [
+        {
+          "NAME":"ship",
+          "CLASS": "VARIABLE",
+          "KIND": "CONTINUOUS",
+          "QUERY": {
+            "SELECT": [
+              "'ship' AS Name                                          -- STRING",
+              "routes.origin AS origin                                 -- STRING",
+              "routes.destination AS destination                       -- STRING",
+              "CONCAT('ship', '_', origin, '_', destination) AS Column -- STRING",
+              "CAST(0.0 AS DOUBLE) AS LowerBound                       -- DOUBLE",
+              "routes.capacity AS UpperBound                           -- DOUBLE",
+			  "'PrimalValue(Column)' AS value                          -- DOUBLE_FUNCTION"
+            ],
+            "FROM": "routes"
+          }
+        },
+        {
+          "NAME": "balance",
+          "CLASS": "CONSTRAINT",
+          "KIND": "LINEAR",
+          "QUERY": {
+            "SELECT": [
+              "'balance' AS Name                                       -- STRING",
+              "cities.city AS city                                     -- STRING",
+              "CONCAT('balance', '_', city) AS Row                     -- STRING",
+              "'EQ' AS Sense                                           -- STRING",
+              "(cities.supply-cities.demand) AS RHS                    -- DOUBLE",
+			  "'DualValue(Row)' AS dual                                -- DOUBLE_FUNCTION"
+            ],
+            "FROM": "cities"
+          }
+        },
+        {
+          "NAME": "totalCost",
+          "CLASS": "OBJECTIVE",
+          "KIND": "LINEAR",
+          "SCHEMA": {
+            "FIELDS": [  "Name",      "Row",       "Constant", "Sense",     "cost"],
+            "TYPES": [   "STRING",    "STRING",    "DOUBLE",   "STRING",    "DOUBLE_FUNCTION"]
+          },
+          "INSTANCE": [[ "totalCost", "totalCost",  0.0,       "MINIMIZE",  "ObjectiveValue(totalCost)"]]
+        },
+        {
+          "NAME": "balance_shipFrom",
+          "CLASS": "TERM",
+          "KIND": "LINEAR",
+          "QUERY": {
+            "SELECT": [
+              "balance.Row AS Row -- STRING",
+              "ship.Column AS Column -- STRING",
+              "CAST(1.0 AS DOUBLE) AS Coefficient -- DOUBLE"
+            ],
+            "FROM": "balance",
+            "JOIN": "ship",
+            "ON": "balance.city = ship.origin"
+            }
+        },
+        {
+          "NAME": "balance_shipTo",
+          "CLASS": "TERM",
+          "KIND": "LINEAR",
+          "QUERY": {
+            "SELECT": [
+              "balance.Row AS Row -- STRING",
+              "ship.Column AS Column -- STRING",
+              "CAST(-1.0 AS DOUBLE) AS Coefficient -- DOUBLE"
+            ],
+            "FROM": "balance",
+            "JOIN": "ship",
+            "ON":  "balance.city = ship.destination"
+          }
+        },
+        {
+          "NAME": "total_ship",
+          "CLASS": "TERM",
+          "KIND": "LINEAR",
+          "QUERY": {
+            "SELECT": [
+              "totalCost.Row AS Row -- STRING",
+              "ship.Column AS Column -- STRING",
+              "routes.cost AS Coefficient -- DOUBLE"
+            ],
+            "FROM": "totalCost",
+            "CROSS JOIN": "ship",
+            "JOIN": "routes",
+            "ON": "routes.origin = ship.origin AND routes.destination = ship.destination"
+          }
+        }
+      ]
+    },
+    {
+      "NAME": "results",
+      "KIND": "MODULE",
+      "HEADING": {
+        "DESCRIPTION": ["Results from General Transshipment Problem"]
+      },
+      "TABLES": [
+        {
+          "NAME": "shipments",
+          "CLASS": "DATA",
+          "KIND": "OUTPUT",
+          "QUERY": {
+            "SELECT": [
+              "ship.origin AS origin           -- STRING",
+              "ship.destination AS destination -- STRING",
+              "ship.value AS value             -- DOUBLE"
+            ],
+            "FROM": "ship"
+          }
+        },
+        {
+          "NAME": "objective",
+          "CLASS": "DATA",
+          "KIND": "OUTPUT",
+          "QUERY": {
+            "SELECT": ["totalCost.cost AS cost -- DOUBLE"],
+            "FROM": "totalCost"
+          }
+        }
+      ]
+    }
+  ]
+}
+
