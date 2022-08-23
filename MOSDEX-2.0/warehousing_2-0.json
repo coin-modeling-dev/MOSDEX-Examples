@@ -1,0 +1,410 @@
+{
+  "SYNTAX": "MOSDEX/MOSDEX v2-0/MOSDEXSchemaV2-0.json",
+  "MODULES": [
+    {
+      "NAME": "warehouseModel",
+      "CLASS": "MODULE",
+      "KIND": "MODEL",
+      "HEADING": {
+        "DESCRIPTION": [
+          "Warehouse location problem",
+          "MOSDEX 2-0 Syntax"
+        ],
+        "VERSION": [ "2-0" ],
+        "REFERENCE": [
+          "https://github.com/JeremyBloom/Optimization---Sample-Notebooks/blob/master/Optimization%2BModeling%2Band%2BRelational%2BData%2Bpub.ipynb"
+        ],
+        "AUTHOR": [
+          "Jeremy A. Bloom (jeremyblmca@gmail.com)"
+        ],
+        "NOTICES": [
+          "Copyright 2019 Jeremy A. Bloom"
+        ],
+        "MATH": [
+          "dexpr float capitalCost= sum(w in warehouses) (w.fixedCost*open[w] + w.capacityCost*capacity[w]);",
+          "dexpr float operatingCost= sum(r in routes) r.shippingCost*demand[r]*ship[r];",
+          "",
+          "minimize totalCost == capitalCost + operatingCost; // $/yr",
+          "subject to {",
+          "",
+          "forall(w in warehouses)",
+          "//Cannot ship more out of a warehouse than its capacity",
+          "ctCapacity[w]: capacity[w] >= sum(r in routes: r.location==w.location) demand[r]*ship[r];",
+          "",
+          "forall(s in stores)",
+          "//Must ship at least 100% of each store's demand",
+          "ctDemand[s]: sum(r in routes: r.store==s.store) ship[r] >= 1.0;",
+          "",
+          "forall(r in routes)",
+          "//Can only ship along a supply route if its warehouse is open",
+          "ctSupply[r]: ship[r] - open[r.location]<= 0.0",
+          "",
+          "}"
+        ]
+      },
+      "TABLES": [
+        {
+          "NAME": "open",
+          "CLASS": "VARIABLE",
+          "KIND": "BINARY",
+          "QUERY": {
+            "SELECT": [
+              "'open' AS Name -- STRING",
+              "location -- STRING",
+              "ID2('open', location) AS Column -- STRING",
+              "0 AS LowerBound -- INTEGER",
+              "1 AS UpperBound -- INTEGER",
+              "PrimalValue('Column') AS Value -- DOUBLE_FUNCTION"
+            ],
+            "FROM": [ "warehouses" ]
+          }
+        },
+        {
+          "NAME": "capacity",
+          "CLASS": "VARIABLE",
+          "KIND": "CONTINUOUS",
+          "QUERY": {
+            "SELECT": [
+              "'capacity' AS Name -- STRING",
+              "location -- STRING",
+              "ID2('capacity', location) AS Column -- STRING",
+              "0.0D AS LowerBound -- DOUBLE",
+              "INFINITY('+') AS UpperBound -- DOUBLE",
+              "PrimalValue('Column') AS Value -- DOUBLE_FUNCTION"
+            ],
+            "FROM": [ "warehouses" ]
+          }
+        },
+        {
+          "NAME": "ship",
+          "CLASS": "VARIABLE",
+          "KIND": "CONTINUOUS",
+          "QUERY": {
+            "SELECT": [
+              "'ship' AS Name -- STRING",
+              "location -- STRING",
+              "store -- STRING",
+              "ID3('ship', location, store) AS Column -- STRING",
+              "0.0D AS LowerBound -- DOUBLE",
+              "1.0D AS UpperBound -- DOUBLE",
+              "PrimalValue('Column') AS Value -- DOUBLE_FUNCTION"
+            ],
+            "FROM": [ "routes" ]
+          }
+        },
+        {
+          "NAME": "ctCapacity",
+          "CLASS": "CONSTRAINT",
+          "KIND": "LINEAR",
+          "QUERY": {
+            "SELECT": [
+              "'ctCapacity' AS Name -- STRING",
+              "location -- STRING",
+              "ID2('ctCapacity', location) AS Row -- STRING",
+              "'>=' AS Sense -- STRING",
+              "0.0D AS RHS -- DOUBLE"
+            ],
+            "FROM": [ "warehouses" ]
+          }
+        },
+        {
+          "NAME": "ctCapacity_capacity",
+          "CLASS": "TERM",
+          "KIND": "LINEAR",
+          "QUERY": {
+            "SELECT": [
+              "ctCapacity.Row AS Row -- STRING",
+              "capacity.Column AS Column -- STRING",
+              "1.0D AS Coefficient -- DOUBLE"
+            ],
+            "FROM": [ "ctCapacity" ],
+            "JOIN": [ "capacity" ], "USING": [ "(location)" ]
+          }
+        },
+        {
+          "NAME": "ctCapacity_ship",
+          "CLASS": "TERM",
+          "KIND": "LINEAR",
+          "QUERY": {
+            "SELECT": [
+              "ctCapacity.Row AS Row -- STRING",
+              "ship.Column AS Column -- STRING",
+              "-demands.amount AS Coefficient -- DOUBLE"
+            ],
+            "FROM": [ "ctCapacity" ],
+            "JOIN": [ "ship" ], "USING": [ "(location)" ],
+            "JOIN#2": [ "demands" ], "USING#2": [ "(store)" ]
+          }
+        },
+        {
+          "NAME": "ctDemand",
+          "CLASS": "CONSTRAINT",
+          "KIND": "LINEAR",
+          "QUERY": {
+            "SELECT": [
+              "'ctDemand' AS Name -- STRING",
+              "store -- STRING",
+              "ID2('ctDemand', store) AS Row -- STRING",
+              "'>=' AS Sense -- STRING",
+              "1.0D AS RHS -- DOUBLE"
+            ],
+            "FROM": [ "stores" ]
+          }
+        },
+        {
+          "NAME": "ctDemand_ship",
+          "CLASS": "TERM",
+          "KIND": "LINEAR",
+          "QUERY": {
+            "SELECT": [
+              "ctDemand.Row AS Row -- STRING",
+              "ship.Column AS Column -- STRING",
+              "1.0D AS Coefficient -- DOUBLE"
+            ],
+            "FROM": [ "ctDemand" ],
+            "JOIN": [ "ship" ], "USING": [ "(store)" ]
+          }
+        },
+        {
+          "NAME": "ctSupply",
+          "CLASS": "CONSTRAINT",
+          "KIND": "LINEAR",
+          "QUERY": {
+            "SELECT": [
+              "'ctSupply' AS Name -- STRING",
+              "location -- STRING",
+              "store -- STRING",
+              "ID3('ctSupply', location, store) AS Row -- STRING",
+              "'<=' AS Sense -- STRING",
+              "0.0D AS RHS -- DOUBLE"
+            ],
+            "FROM": [ "routes" ]
+          }
+        },
+        {
+          "NAME": "ctSupply_open",
+          "CLASS": "TERM",
+          "KIND": "LINEAR",
+          "QUERY": {
+            "SELECT": [
+              "ctSupply.Row AS Row -- STRING",
+              "open.Column AS Column -- STRING",
+              "-1.0D AS Coefficient -- DOUBLE"
+            ],
+            "FROM": [ "ctSupply" ],
+            "JOIN": [ "open" ], "USING": [ "(location)" ]
+          }
+        },
+        {
+          "NAME": "ctSupply_ship",
+          "CLASS": "TERM",
+          "KIND": "LINEAR",
+          "QUERY": {
+            "SELECT": [
+              "ctSupply.Row AS Row -- STRING",
+              "ship.Column AS Column -- STRING",
+              "1.0D AS Coefficient -- DOUBLE"
+            ],
+            "FROM": [ "ctSupply" ],
+            "JOIN": [ "ship" ], "USING": [ "(location, store)" ]
+          }
+        },
+        {
+          "NAME": "capitalCost",
+          "CLASS": "VARIABLE",
+          "KIND": "CONTINUOUS",
+          "SCHEMA": {
+            "FIELDS": [ "Name", "Column", "LowerBound", "UpperBound", "Value" ],
+            "TYPES": [ "STRING", "STRING", "DOUBLE", "DOUBLE", "DOUBLE_FUNCTION" ]
+          },
+          "INSTANCE": [
+            [ "capitalCost", "capitalCost", 0.0, "infinity", "PrimalValue(Column)" ]
+          ]
+        },
+        {
+          "NAME": "deCapitalCost",
+          "CLASS": "CONSTRAINT",
+          "KIND": "LINEAR",
+          "SCHEMA": {
+            "FIELDS": [ "Name", "Row", "Sense", "RHS"],
+            "TYPES": [ "STRING", "STRING", "STRING", "DOUBLE" ]
+          },
+          "INSTANCE": [
+            [ "deCapitalCost", "deCapitalCost", "==", 0.0 ]
+          ]
+        },
+        {
+          "NAME": "deCapitalCost_open",
+          "CLASS": "TERM",
+          "KIND": "LINEAR",
+          "QUERY": {
+            "SELECT": [
+              "'deCapitalCost' AS Row -- STRING",
+              "open.Column AS Column -- STRING",
+              "warehouses.fixedCost AS Coefficient -- DOUBLE"
+            ],
+            "FROM": [ "warehouses" ],
+            "JOIN": [ "open" ], "USING": [ "(location)" ]
+          }
+        },
+        {
+          "NAME": "deCapitalCost_capacity",
+          "CLASS": "TERM",
+          "KIND": "LINEAR",
+          "QUERY": {
+            "SELECT": [
+              "'deCapitalCost' AS Row -- STRING",
+              "capacity.Column AS Column -- STRING",
+              "warehouses.capacityCost AS Coefficient -- DOUBLE"
+            ],
+            "FROM": [ "warehouses" ],
+            "JOIN": [ "capacity" ], "USING": [ "(location)" ]
+          }
+        },
+        {
+          "NAME": "deCapitalCost_capitalCost",
+          "CLASS": "TERM",
+          "KIND": "LINEAR",
+          "SCHEMA": {
+            "FIELDS": [ "Row", "Column", "Coefficient" ],
+            "TYPES": [ "STRING", "STRING", "DOUBLE" ]
+          },
+          "INSTANCE": [
+            [ "deCapitalCost", "capitalCost", -1.0 ]
+          ]
+        },
+        {
+          "NAME": "operatingCost",
+          "CLASS": "VARIABLE",
+          "KIND": "CONTINUOUS",
+          "SCHEMA": {
+            "FIELDS": [ "Name", "Column", "LowerBound", "UpperBound", "Value" ],
+            "TYPES": [ "STRING", "STRING", "DOUBLE", "DOUBLE", "DOUBLE_FUNCTION" ]
+          },
+          "INSTANCE": [
+            [ "operatingCost", "operatingCost", 0.0, "infinity", "PrimalValue(Column)" ]
+          ]
+        },
+        {
+          "NAME": "deOperatingCost",
+          "CLASS": "CONSTRAINT",
+          "KIND": "LINEAR",
+          "SCHEMA": {
+            "FIELDS": [ "Name", "Row", "Sense", "RHS" ],
+            "TYPES": [ "STRING", "STRING", "STRING", "DOUBLE" ]
+          },
+          "INSTANCE": [
+            [ "deOperatingCost", "deOperatingCost", "==", 0.0 ]
+          ]
+        },
+        {
+          "NAME": "deOperatingCost_ship",
+          "CLASS": "TERM",
+          "KIND": "LINEAR",
+          "QUERY": {
+            "SELECT": [
+              "'deOperatingCost' AS Row -- STRING",
+              "ship.Column AS Column -- STRING",
+              "routes.shippingCost*demands.amount AS Coefficient -- DOUBLE"
+            ],
+            "FROM": [ "routes" ],
+            "JOIN": [ "ship" ], "USING": [ "(location, store)" ],
+            "JOIN#2": [ "demands" ], "USING#2": [ "(store)" ]
+          }
+        },
+        {
+          "NAME": "deOperatingCost_operatingCost",
+          "CLASS": "TERM",
+          "KIND": "LINEAR",
+          "SCHEMA": {
+            "FIELDS": [ "Row", "Column", "Coefficient" ],
+            "TYPES": [ "STRING", "STRING", "DOUBLE" ]
+          },
+          "INSTANCE": [
+            [ "deOperatingCost", "operatingCost", -1.0 ]
+          ]
+        },
+        {
+          "NAME": "totalCost",
+          "CLASS": "OBJECTIVE",
+          "KIND": "LINEAR",
+          "SCHEMA": {
+            "FIELDS": [ "Name", "Row", "Constant", "Sense", "Value" ],
+            "TYPES": [ "STRING", "STRING", "DOUBLE", "STRING", "DOUBLE_FUNCTION" ]
+          },
+          "INSTANCE": [
+            [ "totalCost", "totalCost", 0.0, "MINIMIZE", "ObjectiveValue(Row)" ]
+          ]
+        },
+        {
+          "NAME": "totalCost_capitalCost",
+          "CLASS": "TERM",
+          "KIND": "LINEAR",
+          "SCHEMA": {
+            "FIELDS": [ "Row", "Column", "Coefficient" ],
+            "TYPES": [ "STRING", "STRING", "DOUBLE" ]
+          },
+          "INSTANCE": [
+            [ "totalCost", "capitalCost", 1.0 ]
+          ]
+        },
+        {
+          "NAME": "totalCost_operatingCost",
+          "CLASS": "TERM",
+          "KIND": "LINEAR",
+          "SCHEMA": {
+            "FIELDS": [ "Row", "Column", "Coefficient" ],
+            "TYPES": [ "STRING", "STRING", "DOUBLE" ]
+          },
+          "INSTANCE": [
+            [ "totalCost", "operatingCost", 1.0 ]
+          ]
+        },
+        {
+          "NAME": "objectives",
+          "CLASS": "DATA",
+          "KIND": "OUTPUT",
+          "QUERY": {
+            "SELECT": [
+              "'Warehousing' AS problem -- STRING",
+              "capitalCost.Value AS capitalCost -- DOUBLE",
+              "operatingCost.Value AS operatingCost -- DOUBLE",
+              "totalCost.Value AS totalCost -- DOUBLE"
+            ],
+            "FROM": ["capitalCost", "operatingCost", "totalCost"]
+          }
+        },
+        {
+          "NAME": "openWarehouses",
+          "CLASS": "DATA",
+          "KIND": "OUTPUT",
+          "QUERY": {
+            "SELECT": [
+              "open.location AS location -- STRING",
+              "CAST(open.Value AS INTEGER) AS open -- INTEGER",
+              "capacity.Value AS capacity -- DOUBLE"
+            ],
+            "FROM": [ "open" ],
+            "JOIN": [ "capacity" ], "USING": [ "(location)" ],
+            "WHERE": "(open.Value > 0.0)"
+           }
+        },
+        {
+          "NAME": "shipments",
+          "CLASS": "DATA",
+          "KIND": "OUTPUT",
+          "QUERY": {
+            "SELECT": [
+              "ship.location AS location -- STRING",
+              "ship.store AS store -- STRING",
+              "ship.Value*demands.amount AS amount -- DOUBLE"
+            ],
+            "FROM": [ "ship" ],
+            "JOIN": [ "demands" ], "USING": [ "(store)" ],
+            "WHERE": [ "Value > 0.0" ]
+          }
+        }
+      ]
+    }
+  ]
+}

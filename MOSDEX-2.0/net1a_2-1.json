@@ -1,9 +1,10 @@
 {
-  "SYNTAX": "",
+  "SYNTAX": "MOSDEX/MOSDEX v2/MOSDEXSchemaV2-0.json",
   "MODULES": [
     {
       "NAME": "data",
       "CLASS": "MODULE",
+      "KIND": "DATA",
       "HEADING": {
         "DESCRIPTION": ["Data for General Transshipment Problem"]
       },
@@ -51,17 +52,18 @@
     },
     {
       "NAME": "modelingObjects",
-      "KIND": "MODULE",
+      "CLASS": "MODULE",
+      "KIND": "MODEL",
       "HEADING": {
         "DESCRIPTION": [
           "General Transshipment Problem",
           "query form",
           "MOSDEX 2-0 Syntax"
         ],
-        "VERSION": ["a 2-1"],
+        "VERSION": "net1a 2-1",
         "REFERENCE": ["https://ampl.com/BOOK/EXAMPLES/EXAMPLES2/net1.mod"],
         "AUTHOR": ["Jeremy A. Bloom (jeremyblmca@gmail.com)"],
-        "NOTICES": ["Copyright © 2019 Jeremy A. Bloom"],
+        "NOTICES": ["Copyright 2019 Jeremy A. Bloom"],
         "MATH": [
           "var Ship {(i,j) in ROUTES} >= 0, <= capacity[i,j]; # packages to be shipped",
           "minimize Total_Cost: sum {(i,j) in ROUTES} cost[i,j] * Ship[i,j];",
@@ -72,9 +74,9 @@
       },
       "TABLES": [
         {
-          "NAME":"ship",
-          "CLASS": "VARIABLE",
-          "KIND": "CONTINUOUS",
+           "NAME":"ship",
+           "CLASS": "VARIABLE",
+           "KIND": "CONTINUOUS",
           "QUERY": {
             "SELECT": [
               "'ship' AS Name                                          -- STRING",
@@ -112,7 +114,7 @@
             "FIELDS": [  "Name",      "Row",       "Constant", "Sense",     "cost"],
             "TYPES": [   "STRING",    "STRING",    "DOUBLE",   "STRING",    "DOUBLE_FUNCTION"]
           },
-          "INSTANCE": [[ "totalCost", "totalCost",  0.0,       "MINIMIZE",  "ObjectiveValue(totalCost)"]]
+          "INSTANCE": [[ "totalCost", "totalCost",  0.0,       "MINIMIZE",  "ObjectiveValue(Row)"]]
         },
         {
           "NAME": "balance_shipFrom",
@@ -164,7 +166,8 @@
     },
     {
       "NAME": "results",
-      "KIND": "MODULE",
+      "CLASS": "MODULE",
+      "KIND": "DATA",
       "HEADING": {
         "DESCRIPTION": ["Results from General Transshipment Problem"]
       },

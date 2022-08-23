@@ -1,0 +1,196 @@
+{
+  "SYNTAX": "MOSDEX/MOSDEX v2-0/MOSDEXSchemaV2-0.json",
+  "MODULES": [
+    {
+      "NAME": "volsay",
+      "CLASS": "MODULE",
+      "KIND": "MODEL",
+      "HEADING": {
+        "DESCRIPTION": [
+          "Linear program in instance form",
+          "MOSDEX is probably overkill for this simple 3 constraint, 2 variable problem",
+          "but you don't need a solver for this problem either.",
+          "MOSDEX is intended for very large problems encountered in real-world applications",
+          "and in such cases, recipe form provides a very compact problem representation.",
+          "MOSDEX 2-0 Syntax"
+        ],
+        "VERSION": [ "2-0" ],
+        "REFERENCE": [
+          "https://www.ibm.com/support/knowledgecenter/en/SSSA5P_12.5.0/ilog.odms.ide.help/OPL_Studio/opllanguser/topics/opl_languser_shortTour_LP_prodplanning.html"
+        ],
+        "AUTHOR": [
+          "Jeremy A. Bloom (jeremyblmca@gmail.com)"
+        ],
+        "NOTICES": [
+          "Copyright 2019 Jeremy A. Bloom"
+        ],
+        "MATH": [
+          "maximize   40 * Gas + 50 * Chloride;",
+          "subject to {",
+          "ctMaxTotal: Gas + Chloride <= 50;",
+          "ctMaxTotal2: 3 * Gas + 4 * Chloride <= 180;",
+          "ctMaxChloride: Chloride <= 40;",
+          "}"
+        ]
+      },
+      "TABLES": [
+        {
+          "NAME": "gas",
+          "CLASS": "VARIABLE",
+          "KIND": "CONTINUOUS",
+          "SCHEMA": {
+            "FIELDS": [ "Name",   "Column", "LowerBound", "UpperBound", "Value" ],
+            "TYPES": [  "STRING", "STRING", "DOUBLE",     "DOUBLE",     "DOUBLE_FUNCTION" ]
+          },
+          "INSTANCE": [
+            [           "gas",    "gas",    0.0,          "Infinity",   "PrimalValue(Column)" ]
+          ]
+        },
+        {
+          "NAME": "chloride",
+          "CLASS": "VARIABLE",
+          "KIND": "CONTINUOUS",
+          "SCHEMA": {
+            "FIELDS": [ "Name",     "Column",   "LowerBound", "UpperBound", "Value" ],
+            "TYPES": [  "STRING",   "STRING",   "DOUBLE",     "DOUBLE",     "DOUBLE_FUNCTION" ]
+          },
+          "INSTANCE": [
+            [           "chloride", "chloride",   0.0,        "Infinity",   "PrimalValue(Column)" ]
+          ]
+        },
+        {
+          "NAME": "ctMaxTotal",
+          "CLASS": "CONSTRAINT",
+          "KIND": "LINEAR",
+          "SCHEMA": {
+            "FIELDS": [ "Name",       "Row",        "Sense",   "RHS",    "Dual" ],
+            "TYPES": [  "STRING",     "STRING",     "STRING", "DOUBLE", "DOUBLE_FUNCTION" ]
+          },
+          "INSTANCE": [
+            [           "ctMaxTotal", "ctMaxTotal", "<=",     50.0,     "DualValue(Row)" ]
+          ]
+        },
+        {
+          "NAME": "ctMaxTotal2",
+          "CLASS": "CONSTRAINT",
+          "KIND": "LINEAR",
+          "SCHEMA": {
+            "FIELDS": [ "Name",         "Row",        "Sense",  "RHS",    "Dual" ],
+            "TYPES": [  "STRING",       "STRING",     "STRING", "DOUBLE", "DOUBLE_FUNCTION" ]
+          },
+          "INSTANCE": [
+            [           "ctMaxTotal2", "ctMaxTotal2", "<=",     180.0,    "DualValue(Row)" ]
+          ]
+        },
+        {
+          "NAME": "ctMaxChloride",
+          "CLASS": "CONSTRAINT",
+          "KIND": "LINEAR",
+          "SCHEMA": {
+            "FIELDS": [ "Name",       "Row",        "Sense",    "RHS",    "Dual" ],
+            "TYPES": [  "STRING",     "STRING",     "STRING",   "DOUBLE", "DOUBLE_FUNCTION" ]
+          },
+          "INSTANCE": [
+            [           "ctMaxChloride", "ctMaxChloride", "<=", 40.0,     "DualValue(Row)" ]
+          ]
+        },
+        {
+          "NAME": "profit",
+          "CLASS": "OBJECTIVE",
+          "KIND": "LINEAR",
+          "SCHEMA": {
+            "FIELDS": [ "Name",   "Row",    "Constant", "Sense",    "Value" ],
+            "TYPES": [  "STRING", "STRING", "DOUBLE",   "STRING",   "DOUBLE_FUNCTION" ]
+          },
+          "INSTANCE": [
+            [           "profit", "profit",   0.0,      "MAXIMIZE", "ObjectiveValue(Row)" ]
+          ]
+        },
+        {
+          "NAME": "profit_gas",
+          "CLASS": "TERM",
+          "KIND": "LINEAR",
+          "SCHEMA": {
+            "FIELDS": [ "Row",    "Column", "Coefficient" ],
+            "TYPES": [  "STRING", "STRING", "DOUBLE" ]
+          },
+          "INSTANCE": [
+            [           "profit",  "gas",    40.0 ]
+          ]
+        },
+        {
+          "NAME": "profit_chloride",
+          "CLASS": "TERM",
+          "KIND": "LINEAR",
+          "SCHEMA": {
+            "FIELDS": [ "Row",    "Column",   "Coefficient" ],
+            "TYPES": [  "STRING", "STRING",   "DOUBLE" ]
+          },
+          "INSTANCE": [
+            [           "profit",  "chloride", 50.0 ]
+          ]
+        },
+        {
+          "NAME": "ctMaxTotal_gas",
+          "CLASS": "TERM",
+          "KIND": "LINEAR",
+          "SCHEMA": {
+            "FIELDS": [ "Row",        "Column", "Coefficient" ],
+            "TYPES": [  "STRING",     "STRING", "DOUBLE" ]
+          },
+          "INSTANCE": [
+            [           "ctMaxTotal", "gas",     1.0 ]
+          ]
+        },
+        {
+          "NAME": "ctMaxTotal_chloride",
+          "CLASS": "TERM",
+          "KIND": "LINEAR",
+          "SCHEMA": {
+            "FIELDS": [ "Row",        "Column",   "Coefficient" ],
+            "TYPES": [  "STRING",     "STRING",   "DOUBLE" ]
+          },
+          "INSTANCE": [
+            [           "ctMaxTotal", "chloride", 1.0 ]
+          ]
+        },
+        {
+          "NAME": "ctMaxTotal2_gas",
+          "CLASS": "TERM",
+          "KIND": "LINEAR",
+          "SCHEMA": {
+            "FIELDS": [ "Row",         "Column", "Coefficient" ],
+            "TYPES": [  "STRING",      "STRING", "DOUBLE" ]
+          },
+          "INSTANCE": [
+            [           "ctMaxTotal2", "gas",     3.0 ]
+          ]
+        },
+        {
+          "NAME": "ctMaxTotal2_chloride",
+          "CLASS": "TERM",
+          "KIND": "LINEAR",
+          "SCHEMA": {
+            "FIELDS": [ "Row",         "Column",  "Coefficient" ],
+            "TYPES": [  "STRING",      "STRING",  "DOUBLE" ]
+          },
+          "INSTANCE": [
+            [           "ctMaxTotal2", "chloride", 4.0 ]
+          ]
+        },
+        {
+          "NAME": "ctMaxChloride_chloride",
+          "CLASS": "TERM",
+          "KIND": "LINEAR",
+          "SCHEMA": {
+            "FIELDS": [ "Row",           "Column",  "Coefficient" ],
+            "TYPES": [  "STRING",        "STRING",  "DOUBLE" ]
+          },
+          "INSTANCE": [
+            [           "ctMaxChloride", "chloride", 1.0 ]
+          ]
+        }
+      ]
+    }
+  ]
+}

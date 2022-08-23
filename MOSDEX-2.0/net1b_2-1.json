@@ -1,0 +1,142 @@
+{
+  "SYNTAX": "MOSDEX/MOSDEX v2/MOSDEXSchemaV2-0.json",
+  "MODULES": [
+    { "NAME": "generalTransshipment",
+      "CLASS": "MODEL",
+      "HEADING": {
+        "DESCRIPTION": [
+          "General Transshipment Problem",
+          "instance form", "with a function calls for output",
+          "MOSDEX 2-0 Syntax"
+        ],
+        "VERSION": "net1b 2-1",
+        "REFERENCE": ["https://ampl.com/BOOK/EXAMPLES/EXAMPLES2/net1.mod"],
+        "AUTHOR": ["Jeremy A. Bloom (jeremyblmca@gmail.com)"],
+        "NOTICES": ["Copyright 2019 Jeremy A. Bloom"],
+        "MATH": [
+          "var Ship {(i,j) in LINKS} >= 0, <= capacity[i,j]; # packages to be shipped",
+          "minimize Total_Cost: sum {(i,j) in LINKS} cost[i,j] * Ship[i,j];",
+          "subject to",
+            "Balance {k in CITIES}: ",
+              "sum {(k,j) in LINKS} Ship[k,j] - sum {(i,k) in LINKS} Ship[i,k] = supply[k] - demand[k];"
+        ]
+      },
+      "TABLES": [
+        { "NAME": "ship",
+          "CLASS": "VARIABLE",
+          "KIND": "CONTINUOUS",
+          "SCHEMA": {
+            "FIELDS":
+              ["Name",  "origin",  "destination",  "Column",     "LowerBound", "UpperBound", "Value"],
+            "TYPES":
+              ["STRING","STRING",  "STRING",       "STRING",     "DOUBLE",     "DOUBLE",    "DOUBLE_FUNCTION"]
+          },
+          "INSTANCE": [
+            ["ship", "PITT",    "NE",           "ship_PITT_NE",   0.0,          250.0,   "PrimalValue(Column)"],
+            ["ship", "PITT",    "SE",           "ship_PITT_SE",   0.0,          250.0,   "PrimalValue(Column)"],
+            ["ship", "NE",      "BOS",          "ship_NE_BOS",    0.0,          100.0,   "PrimalValue(Column)" ],
+            ["ship", "NE",      "EWR",          "ship_NE_EWR",    0.0,          100.0,   "PrimalValue(Column)" ],
+            ["ship", "NE",      "BWI",          "ship_NE_BWI",    0.0,          100.0,   "PrimalValue(Column)" ],
+            ["ship", "SE",      "EWR",          "ship_SE_EWR",    0.0,          100.0,   "PrimalValue(Column)" ],
+            ["ship", "SE",      "BWI",          "ship_SE_BWI",    0.0,          100.0,   "PrimalValue(Column)" ],
+            ["ship", "SE",      "ATL",          "ship_SE_ATL",    0.0,          100.0,   "PrimalValue(Column)" ],
+            ["ship", "SE",      "MCO",          "ship_SE_MCO",    0.0,          100.0,   "PrimalValue(Column)" ]
+          ]
+      },
+        { "NAME": "balance",
+          "CLASS": "CONSTRAINT",
+          "KIND": "LINEAR",
+          "SCHEMA": {
+            "FIELDS":
+              ["Name",     "city",   "Row",          "Sense",  "RHS"  ,  "Dual"],
+            "TYPES":
+              ["STRING",   "STRING", "STRING",       "STRING", "DOUBLE", "DOUBLE_FUNCTION"]
+          },
+          "INSTANCE": [
+            ["balance", "PITT", "balance_PITT",    "EQ",     450.0,    "DualValue(Row)"],
+            ["balance", "NE",   "balance_NE",      "EQ",     0.0,      "DualValue(Row)"  ],
+            ["balance", "SE",   "balance_SE",      "EQ",     0.0,      "DualValue(Row)"  ],
+            ["balance", "BOS",  "balance_BOS",     "EQ",     -90.0,    "DualValue(Row)" ],
+            ["balance", "EWR",  "balance_EWR",     "EQ",     -120.0,   "DualValue(Row)" ],
+            ["balance", "BWI",  "balance_BWI",     "EQ",     -120.0,   "DualValue(Row)" ],
+            ["balance", "ATL",  "balance_ATL",     "EQ",     -70.0,    "DualValue(Row)" ],
+            ["balance", "MCO",  "balance_MCO",     "EQ",     -50.0 ,   "DualValue(Row)" ]
+          ]
+        },
+        { "NAME": "totalCost",
+          "CLASS": "OBJECTIVE",
+          "KIND": "LINEAR",
+          "SCHEMA": {
+            "FIELDS":  ["Name",      "Row",         "Constant", "Sense",    "Value"],
+            "TYPES":   ["STRING",    "STRING",      "DOUBLE",   "STRING",   "DOUBLE_FUNCTION"]
+          },
+          "INSTANCE": [["totalCost", "totalCost",    0.0,       "MINIMIZE", "ObjectiveValue(Row)"]]
+        },
+        { "NAME": "balance_shipFrom",
+          "CLASS": "TERM",
+          "KIND": "LINEAR",
+          "SCHEMA": {
+            "FIELDS":
+              ["Row",         "Column",       "Coefficient"],
+            "TYPES":
+              ["STRING",      "STRING",       "DOUBLE"]
+          },
+          "INSTANCE": [
+            ["balance_PITT", "ship_PITT_NE", 1.0          ],
+            ["balance_PITT", "ship_PITT_SE", 1.0          ],
+            ["balance_NE",   "ship_NE_BOS",  1.0          ],
+            ["balance_NE",   "ship_NE_EWR",  1.0          ],
+            ["balance_NE",   "ship_NE_BWI",  1.0          ],
+            ["balance_SE",   "ship_SE_EWR",  1.0          ],
+            ["balance_SE",   "ship_SE_BWI",  1.0          ],
+            ["balance_SE",   "ship_SE_ATL",  1.0          ],
+            ["balance_SE",   "ship_SE_MCO",  1.0          ]
+          ]
+        },
+        { "NAME": "balance_shipTo",
+          "CLASS": "TERM",
+          "KIND": "LINEAR",
+          "SCHEMA": {
+            "FIELDS":
+              ["Row",        "Column",         "Coefficient"],
+            "TYPES": 
+              ["STRING",     "STRING",         "DOUBLE"]
+          },
+          "INSTANCE": [
+            ["balance_NE",  "ship_PITT_NE",   -1.0         ],
+            ["balance_SE",  "ship_PITT_SE",   -1.0         ],
+            ["balance_BOS", "ship_NE_BOS",    -1.0         ],
+            ["balance_EWR", "ship_NE_EWR",    -1.0         ],
+            ["balance_EWR", "ship_SE_EWR",    -1.0         ],
+            ["balance_BWI", "ship_NE_BWI",    -1.0         ],
+            ["balance_BWI", "ship_SE_BWI",    -1.0         ],
+            ["balance_ATL", "ship_SE_ATL",    -1.0         ],
+            ["balance_MCO", "ship_SE_MCO",    -1.0         ]
+          ]
+        },
+        { "NAME": "total_ship",
+          "CLASS": "TERM",
+          "KIND": "LINEAR",
+          "SCHEMA": {
+            "FIELDS":
+              ["Row",      "Column",       "Coefficient"],
+            "TYPES":
+              ["STRING",   "STRING",       "DOUBLE"]
+          },
+          "INSTANCE": [
+            ["totalCost", "ship_PITT_NE", 2.5          ],
+            ["totalCost", "ship_PITT_SE", 3.5          ],
+            ["totalCost", "ship_NE_BOS",  1.7          ],
+            ["totalCost", "ship_NE_EWR",  0.7          ],
+            ["totalCost", "ship_NE_BWI",  1.3          ],
+            ["totalCost", "ship_SE_EWR",  1.3          ],
+            ["totalCost", "ship_SE_BWI",  0.8          ],
+            ["totalCost", "ship_SE_ATL",  0.2          ],
+            ["totalCost", "ship_SE_MCO",  2.1          ]
+          ]
+        }
+      ]
+    }
+  ]
+}
+
