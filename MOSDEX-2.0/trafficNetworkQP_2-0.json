@@ -1,0 +1,341 @@
+{
+  "SYNTAX": "MOSDEX/MOSDEX v2-0/MOSDEXSchemaV2-0.json",
+  "MODULES": [
+    {
+      "NAME": "trafficNetworkQP",
+      "CLASS": "MODULE",
+      "KIND": "MODEL",
+      "HEADING": {
+        "DESCRIPTION": [
+          "Quadratically constrained network problem"
+        ],
+        "REFERENCE": [
+          "https://ampl.com/MEETINGS/TALKS/2015_11_Philadelphia_MC19.pdf"
+        ],
+        "VERSION": [ "2-0" ],
+        "AUTHOR": [
+          "Jeremy A. Bloom (jeremyblmca@gmail.com)"
+        ],
+        "NOTICES": [
+          "Copyright 2019 Jeremy A. Bloom"
+        ],
+        "MATH": [
+          "var Flow {(i,j) in ROADS} >= 0, <= .9999 * cap[i,j];",
+          "var Delay{ROADS} >= 0;",
+          "var Slack {ROADS} >= 0 ;",
+          "minimize Avg_Time: sum {(i,j) in ROADS} (base[i,j]*Flow[i,j] + Delay[i,j]) / throughput;",
+          "subject to Delay_Def {(i,j) in ROADS}:",
+          "   sens[i,j] * Flow[i,j]^2 <= Slack[i,j] * Delay[i,j];",
+          "subject to Slack_Def {(i,j) in ROADS}:",
+          "   Slack[i,j] = 1 - Flow[i,j]/cap[i,j];",
+          "subject to Balance_Node {i in INTERS}:",
+          "   sum{(i,j) in ROADS} Flow[i,j] -sum{(j,i) in ROADS} Flow[j,i] = 0.0;",
+          "subject to Balance_Enter:",
+          "   sum{(parameters.entrance,j) in ROADS} Flow[parameters.entrance,j] = throughput"
+        ]
+      },
+      "SOLVER_PARAMETERS": {
+        "CPLEX": {
+          "OptimalityTarget": "CPX_OPTIMALITYTARGET_OPTIMALGLOBAL"
+        }
+      },
+      "TABLES": [
+        {
+          "NAME": "roads",
+          "CLASS": "DATA",
+          "KIND": "INPUT",
+          "SCHEMA": {
+            "FIELDS": [ "origin", "destination", "base",    "capacity", "sensitivity" ],
+            "TYPES": [  "STRING", "STRING",      "DOUBLE",  "DOUBLE",   "DOUBLE" ]
+          },
+          "INSTANCE": [
+            [           "a",      "b",           4.0,       10.0,        0.1 ],
+            [           "a",      "c",           1.0,       12.0,        0.7 ],
+            [           "c",      "b",           2.0,       20.0,        0.9 ],
+            [           "b",      "d",           1.0,       15.0,        0.5 ],
+            [           "c",      "d",           6.0,       10.0,        0.1 ]
+          ]
+        },
+        {
+          "NAME": "intersections",
+          "CLASS": "DATA",
+          "KIND": "INPUT",
+          "SCHEMA": {
+            "FIELDS": [ "node" ],
+            "TYPES": [  "STRING" ]
+          },
+          "INSTANCE": [
+            [           "b" ],
+            [           "c" ]
+          ]
+        },
+        {
+          "NAME": "parameters",
+          "CLASS": "DATA",
+          "KIND": "INPUT",
+          "SCHEMA": {
+            "FIELDS": [ "entrance", "exit",   "throughput" ],
+            "TYPES": [  "STRING",   "STRING", "DOUBLE" ]
+          },
+          "INSTANCE": [
+            [           "a",        "d",       20.0 ]
+          ]
+        },
+        {
+          "NAME": "flow",
+          "CLASS": "VARIABLE",
+          "KIND": "CONTINUOUS",
+          "QUERY": {
+            "SELECT": [
+              "'flow' AS Name -- STRING",
+              "origin -- STRING",
+              "destination -- STRING",
+              "CONCAT('flow', '_', roads.origin,'_', roads.destination) AS Column -- STRING",
+              "CAST(0.0 AS DOUBLE) AS LowerBound -- DOUBLE",
+              "0.9999*capacity AS UpperBound -- DOUBLE",
+              "'PrimalValue(Column)' AS Value -- DOUBLE_FUNCTION"
+            ],
+            "FROM": [ "roads" ]
+          }
+        },
+        {
+          "NAME": "delay",
+          "CLASS": "VARIABLE",
+          "KIND": "CONTINUOUS",
+          "QUERY": {
+            "SELECT": [
+              "'delay' AS Name -- STRING",
+              "origin -- STRING",
+              "destination -- STRING",
+              "CONCAT('delay', '_', roads.origin,'_', roads.destination) AS Column -- STRING",
+              "CAST(0.0 AS DOUBLE) As LowerBound -- DOUBLE",
+              "INFINITY('+') AS UpperBound -- DOUBLE",
+              "'PrimalValue(Column)' AS Value -- DOUBLE_FUNCTION"
+            ],
+            "FROM": [ "roads" ]
+          }
+        },
+        {
+          "NAME": "slack",
+          "CLASS": "VARIABLE",
+          "KIND": "CONTINUOUS",
+          "QUERY": {
+            "SELECT": [
+              "'slack' AS Name -- STRING",
+              "origin -- STRING",
+              "destination -- STRING",
+              "CONCAT('slack', '_', roads.origin,'_', roads.destination) AS Column -- STRING",
+              "CAST(0.0 AS DOUBLE) As LowerBound -- DOUBLE",
+              "INFINITY('+') AS UpperBound -- DOUBLE",
+              "'PrimalValue(Column)' AS Value -- DOUBLE_FUNCTION"
+            ],
+            "FROM": [ "roads" ]
+          }
+          
+        },
+        {
+          "NAME": "avgTime",
+          "CLASS": "OBJECTIVE",
+          "KIND": "LINEAR",
+          "SCHEMA": {
+            "FIELDS": [ "Name",     "Row",    "Constant", "Sense",    "Value" ],
+            "TYPES": [  "STRING",   "STRING", "DOUBLE",   "STRING",   "DOUBLE_FUNCTION" ]
+          },
+          "INSTANCE": [
+            [           "avgTime",  "avgTime", 0.0,       "MINIMIZE", "'ObjectiveValue(Row)'" ]
+          ]
+        },
+        {
+          "NAME": "avgTime_flow",
+          "CLASS": "TERM",
+          "KIND": "LINEAR",
+          "QUERY": {
+            "SELECT": [
+              "'avgTime' AS Row -- STRING",
+              "flow.Column AS Column -- STRING",
+              "roads.base/parameters.throughput AS Coefficient -- DOUBLE"
+            ],
+            "FROM": [ "flow", "parameters" ],
+            "JOIN": [ "roads" ], "USING": [ "(origin, destination)" ]
+          }
+        },
+        {
+          "NAME": "avgTime_delay",
+          "CLASS": "TERM",
+          "KIND": "LINEAR",
+          "QUERY": {
+            "SELECT": [
+              "'avgTime' AS Row -- STRING",
+              "delay.Column AS Column -- STRING",
+              "1.0/parameters.throughput AS Coefficient -- DOUBLE"
+            ],
+            "FROM": [ "delay", "parameters" ]
+          }
+        },
+        {
+          "NAME": "delayDef",
+          "CLASS": "CONSTRAINT",
+          "KIND": "QUADRATIC",
+          "QUERY": {
+            "SELECT": [
+              "'delayDef' AS Name -- STRING",
+              "origin -- STRING",
+              "destination -- STRING",
+              "CONCAT('delayDef', '_', roads.origin, '_', roads.destination) AS Row -- STRING",
+              "'LE' AS Sense -- STRING",
+              "CAST(0.0 AS DOUBLE) AS RHS -- DOUBLE"
+            ],
+            "FROM": [ "roads" ]
+          }
+        },
+        {
+          "NAME": "delayDef_flowSq",
+          "CLASS": "TERM",
+          "KIND": "QUADRATIC",
+          "QUERY": {
+            "SELECT": [
+              "delayDef.Row AS Row -- STRING",
+              "flow.Column AS Column -- STRING",
+              "flow.Column AS Column2 -- STRING",
+              "roads.sensitivity AS Coefficient -- DOUBLE"
+            ],
+            "FROM": [ "delayDef" ],
+            "JOIN": [ "flow" ], "USING": [ "(origin, destination)" ],
+            "JOIN#2": [ "roads" ], "USING#2": [ "(origin, destination)" ]
+          }
+        },
+        {
+          "NAME": "delayDef_delay_slack",
+          "CLASS": "TERM",
+          "KIND": "QUADRATIC",
+          "QUERY": {
+            "SELECT": [
+              "delayDef.Row AS Row -- STRING",
+              "delay.Column AS Column -- STRING",
+              "slack.Column AS Column2 -- STRING",
+              "CAST(-1.0 AS DOUBLE) AS Coefficient -- DOUBLE"
+            ],
+            "FROM": [ "delayDef" ],
+            "JOIN": [ "delay" ], "USING": [ "(origin, destination)" ],
+            "JOIN#2": [ "slack" ], "USING#2": [ "(origin, destination)" ]
+          }
+        },
+        {
+          "NAME": "slackDef",
+          "CLASS": "CONSTRAINT",
+          "KIND": "LINEAR",
+          "QUERY": {
+            "SELECT": [
+              "'slackDef' AS Name -- STRING",
+              "origin -- STRING",
+              "destination -- STRING",
+              "CONCAT('slackDef', '_', roads.origin, '_', roads.destination) AS Row -- STRING",
+              "'EQ' AS Sense -- STRING",
+              "CAST(1.0 AS DOUBLE) AS RHS -- DOUBLE"
+            ],
+            "FROM": [ "roads" ]
+          }
+        },
+        {
+          "NAME": "slackDef_slack",
+          "CLASS": "TERM",
+          "KIND": "LINEAR",
+          "QUERY": {
+            "SELECT": [
+              "slackDef.Row AS Row -- STRING",
+              "slack.Column AS Column -- STRING",
+              "CAST(1.0 AS DOUBLE) AS Coefficient -- DOUBLE"
+            ],
+            "FROM": [ "slackDef" ],
+            "JOIN": [ "slack" ], "USING": [ "(origin, destination)" ]
+          }
+        },
+        {
+          "NAME": "slackDef_flow",
+          "CLASS": "TERM",
+          "KIND": "LINEAR",
+          "QUERY": {
+            "SELECT": [
+              "slackDef.Row AS Row -- STRING",
+              "flow.Column AS Column -- STRING",
+              "1.0/roads.capacity AS Coefficient -- DOUBLE"
+            ],
+            "FROM": [ "slackDef" ],
+            "JOIN": [ "flow" ], "USING": [ "(origin, destination)" ],
+            "JOIN#2": [ "roads" ], "USING#2": [ "(origin, destination)" ]
+          }
+        },
+        {
+          "NAME": "balanceNode",
+          "CLASS": "CONSTRAINT",
+          "KIND": "LINEAR",
+          "QUERY": {
+            "SELECT": [
+              "'balanceNode' AS Name -- STRING",
+              "node -- STRING",
+              "CONCAT('balanceNode', '_', intersections.node) AS Row -- STRING",
+              "'EQ' AS Sense -- STRING",
+              "CAST(0.0 AS DOUBLE) AS RHS -- DOUBLE"
+            ],
+            "FROM": [ "intersections" ]
+          }
+        },
+        {
+          "NAME": "balanceNode_flowOut",
+          "CLASS": "TERM",
+          "KIND": "LINEAR",
+          "QUERY": {
+            "SELECT": [
+              "balanceNode.Row AS Row -- STRING",
+              "flow.Column AS Column -- STRING",
+              "CAST(1.0 AS DOUBLE) AS Coefficient -- DOUBLE" ],
+            "FROM": [ "balanceNode" ],
+            "JOIN": [ "flow" ], "ON": [ "(balanceNode.node = flow.origin)" ]
+          }
+        },
+        {
+          "NAME": "balanceNode_flowIn",
+          "CLASS": "TERM",
+          "KIND": "LINEAR",
+          "QUERY": {
+            "SELECT": [
+              "balanceNode.Row AS Row -- STRING",
+              "flow.Column AS Column -- STRING",
+              "CAST(-1.0 AS DOUBLE) AS Coefficient -- DOUBLE"
+            ],
+            "FROM": [ "balanceNode" ],
+            "JOIN": [ "flow" ], "ON": ["(balanceNode.node = flow.destination)"]
+          }
+        },
+        {
+          "NAME": "balanceEnter",
+          "CLASS": "CONSTRAINT",
+          "KIND": "LINEAR",
+          "QUERY": {
+            "SELECT": [
+              "'balanceEnter' AS Name -- STRING",
+              "CONCAT('balanceEnter') AS Row -- STRING",
+              "'EQ' AS Sense -- STRING",
+              "parameters.throughput AS RHS -- DOUBLE"
+            ],
+            "FROM": [ "parameters" ]
+          }
+        },
+        {
+          "NAME": "balanceEnter_flowOut",
+          "CLASS": "TERM",
+          "KIND": "LINEAR",
+          "QUERY": {
+            "SELECT": [
+              "balanceEnter.Row AS Row -- STRING",
+              "flow.Column AS Column -- STRING",
+              "CAST(1.0 AS DOUBLE) AS Coefficient -- DOUBLE"
+            ],
+            "FROM": [ "balanceEnter", "parameters" ],
+            "JOIN": [ "flow" ], "ON": [ "(flow.origin = parameters.entrance)" ]
+          }
+        }
+      ]
+    }
+  ]
+}
